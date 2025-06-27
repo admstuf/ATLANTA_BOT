@@ -48,7 +48,7 @@ module.exports = {
           ? "🎉 Congratulations! Your application has been reviewed and accepted by our HR Team.\n" 
           : "Unfortunately, your application did not meet our current requirements.\n"
         }` +
-        `${reason}`
+        `Reason: ${reason}`
       )
       .addFields(
         { name: '📋 Type', value: applicationType, inline: true }
