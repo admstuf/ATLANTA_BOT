@@ -58,6 +58,15 @@ module.exports = {
       })
       .setTimestamp();
 
+    // Create disabled reviewer button
+    const reviewerButton = new ButtonBuilder()
+      .setLabel(`Reviewed by: ${message.author.displayName}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true)
+      .setCustomId('reviewed_by');
+
+    const row = new ActionRowBuilder().addComponents(reviewerButton);
+
     // Always send to results channel
     const resultsChannel = message.guild.channels.cache.get('1380691912234897518');
     if (!resultsChannel) {
@@ -69,7 +78,8 @@ module.exports = {
       // Send to results channel
       await resultsChannel.send({
         content: `<@${applicantId}>`,
-        embeds: [embed]
+        embeds: [embed],
+        components: [row]
       });
 
       // Send confirmation message that auto-deletes
@@ -83,7 +93,7 @@ module.exports = {
       // Try to DM the user (optional, won't fail if can't DM)
       try {
         const user = await message.guild.members.fetch(applicantId);
-        await user.send({ embeds: [embed] });
+        await user.send({ embeds: [embed], components: [row] });
       } catch {
         // Silently fail if can't DM - not critical
       }
