@@ -43,7 +43,7 @@ module.exports = {
       .setColor(isAccepted ? '#00ff00' : '#ff4444')
       .setTitle(isAccepted ? '✅ Application Accepted' : '❌ Application Denied')
       .setDescription(
-        `Your **${applicationType}** application has been **${action}ed**!\n\n` +
+        `Your **${applicationType}** application has been **${action === 'accept' ? 'accepted' : 'denied'}**!\n\n` +
         `${isAccepted 
           ? "🎉 I'm pleased to inform you that, your application has met our criteria and your application has been accepted by a member of our HR Team!\n" 
           : "Unfortunately, your application did not meet our current requirements.\n"
