@@ -45,7 +45,7 @@ module.exports = {
       .setDescription(
         `Your **${applicationType}** application has been **${action}ed**!\n\n` +
         `${isAccepted 
-          ? "🎉 Congratulations! Your application has been reviewed and accepted by our HR Team.\n" 
+          ? "🎉 I'm pleased to inform you that, your application has met our criteria and your application has been accepted by a member of our HR Team!\n" 
           : "Unfortunately, your application did not meet our current requirements.\n"
         }` +
         `Reason: ${reason}`
