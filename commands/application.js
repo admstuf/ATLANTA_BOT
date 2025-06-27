@@ -43,32 +43,20 @@ module.exports = {
       .setColor(isAccepted ? '#00ff00' : '#ff4444')
       .setTitle(isAccepted ? '✅ Application Accepted' : '❌ Application Denied')
       .setDescription(
-        `Hey <@${applicantId}>,\n\n` +
         `Your **${applicationType}** application has been **${action}ed**!\n\n` +
         `${isAccepted 
-          ? "🎉 Congratulations! Your application has been reviewed and accepted by our HR Team." 
-          : "Unfortunately, your application did not meet our current requirements."
-        }\n\n` +
-        `**Reason:** ${reason}`
+          ? "🎉 Congratulations! Your application has been reviewed and accepted by our HR Team.\n" 
+          : "Unfortunately, your application did not meet our current requirements.\n"
+        }` +
+        `${reason}`
       )
       .addFields(
-        { name: '👤 Applicant', value: `<@${applicantId}>`, inline: true },
-        { name: '📋 Type', value: applicationType, inline: true },
-        { name: '👨‍💼 Reviewer', value: `<@${message.author.id}>`, inline: true }
+        { name: '📋 Type', value: applicationType, inline: true }
       )
       .setFooter({ 
         text: `User ID: ${applicantId} | ${isAccepted ? 'Welcome to the team!' : 'Better luck next time!'}` 
       })
       .setTimestamp();
-
-    // Create button with reviewer info
-    const reviewerButton = new ButtonBuilder()
-      .setLabel(`Reviewed by: ${message.author.displayName}`)
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(true)
-      .setCustomId('reviewed_by');
-
-    const row = new ActionRowBuilder().addComponents(reviewerButton);
 
     // Always send to results channel
     const resultsChannel = message.guild.channels.cache.get('1380691912234897518');
@@ -81,8 +69,7 @@ module.exports = {
       // Send to results channel
       await resultsChannel.send({
         content: `<@${applicantId}>`,
-        embeds: [embed],
-        components: [row],
+        embeds: [embed]
       });
 
       // Send confirmation message that auto-deletes
@@ -96,7 +83,7 @@ module.exports = {
       // Try to DM the user (optional, won't fail if can't DM)
       try {
         const user = await message.guild.members.fetch(applicantId);
-        await user.send({ embeds: [embed], components: [row] });
+        await user.send({ embeds: [embed] });
       } catch {
         // Silently fail if can't DM - not critical
       }
