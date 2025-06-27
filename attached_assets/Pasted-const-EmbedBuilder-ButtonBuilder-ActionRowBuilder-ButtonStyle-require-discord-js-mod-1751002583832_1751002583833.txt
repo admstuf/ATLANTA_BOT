@@ -1,0 +1,59 @@
+const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+
+module.exports = {
+  name: 'application',
+  description: 'Accept or deny an application.',
+  async execute(message, args) {
+    if (!args.length || (args[0] !== 'accept' && args[0] !== 'deny')) {
+      const reply = await message.reply('❌ Usage: `!application accept/deny <@user> <applicationType> <reason>`');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
+    }
+
+    const action = args[0];
+    const userMention = args[1];
+    const applicationType = args[2];
+    const reason = args.slice(3).join(' ') || 'No reason provided';
+
+    // check if user mention is valid
+    const userIdMatch = userMention.match(/^<@!?(\d+)>$/);
+    if (!userIdMatch) {
+      const reply = await message.reply('❌ Please mention the user who was reviewed.');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
+    }
+
+    const applicantId = userIdMatch[1];
+
+    const embed = new EmbedBuilder()
+      .setColor(action === 'accept' ? 'Green' : 'Red')
+      .setTitle(action === 'accept' ? '✅ Application Accepted' : '❌ Application Denied')
+      .setDescription(
+        `Hey <@${applicantId}>,\n\nYour **${applicationType}** application has been ${action}ed!\n` +
+        `I'm pleased to inform you that your application has been reviewed by a member of our HR Team.\n\n` +
+        `Reason: ${reason}`
+      )
+      .setTimestamp();
+
+    const reviewerButton = new ButtonBuilder()
+      .setLabel(`Reviewed by: ${message.author.tag}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true);
+
+    const row = new ActionRowBuilder().addComponents(reviewerButton);
+
+    // send result to the results channel
+    const resultsChannel = message.guild.channels.cache.get('1380691912234897518');
+    if (!resultsChannel) {
+      const reply = await message.reply('⚠️ Could not find the results channel.');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
+    }
+
+    await resultsChannel.send({
+      content: `<@${applicantId}>`,
+      embeds: [embed],
+      components: [row],
+    });
+
+    const confirmation = await message.reply(`📨 Application has been ${action}ed and posted in <#1380691912234897518>.`);
+    setTimeout(() => confirmation.delete().catch(() => {}), 10000); // auto-delete confirmation after 10s
+  },
+};

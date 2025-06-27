@@ -1,65 +1,72 @@
 require('dotenv').config();
 const fs = require('fs');
-const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder } = require('discord.js');
+const path = require('path');
+const express = require('express');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
 
-// create the client with required intents
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// simple express server
+app.get('/', (req, res) => {
+  res.send('Bot is alive!');
+});
+
+app.listen(PORT, () => {
+  console.log(`Express server running on port ${PORT}`);
+});
+
+// discord client setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ],
-  partials: [Partials.Channel],
 });
 
-// collection for commands
 client.commands = new Collection();
 
-// dynamically load commands
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+// load commands
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
+  const command = require(path.join(commandsPath, file));
   client.commands.set(command.name, command);
 }
 
-// on bot ready
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // set bot status
+  client.user.setPresence({
+    activities: [{ name: 'Atlanta Roleplay Utilities', type: 0 }],
+    status: 'online',
+  });
 });
 
-// on message
-client.on('messageCreate', async (message) => {
-  if (!message.content.startsWith('!') || message.author.bot) return;
+// command handler for prefix commands
+const prefix = '!';
 
-  const args = message.content.slice(1).trim().split(/ +/);
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+  if (!message.content.startsWith(prefix)) return;
+
+  const args = message.content.slice(prefix.length).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
-  const command = client.commands.get(commandName);
 
+  const command = client.commands.get(commandName);
   if (!command) return;
 
-  // only allow Discord Moderator role for everything except !commands
-  if (commandName !== 'commands' && !message.member.roles.cache.some(r => r.name === 'Discord Moderator')) {
-    return message.reply('❌ Only users with the **Discord Moderator** role can use this command.');
-  }
-
   try {
-    await command.execute(message, args);
+    await command.execute(message, args, client);
   } catch (error) {
     console.error(error);
-    await message.reply('⚠️ There was an error trying to execute that command.');
+    message.reply('❌ There was an error executing that command.');
   }
 });
 
-// minimal express web server for Replit uptime
-const express = require('express');
-const app = express();
-app.get('/', (req, res) => res.send('Bot is alive!'));
-app.listen(3000, () => console.log('🌐 Web server running to keep bot alive on Replit.'));
+client.login(process.env.DISCORD_BOT_TOKEN);
 
-// login
-const token = process.env.DISCORD_BOT_TOKEN;
-if (!token) {
-  console.error('❌ DISCORD_BOT_TOKEN is not set in environment variables!');
-  process.exit(1);
-}
-client.login(token);
