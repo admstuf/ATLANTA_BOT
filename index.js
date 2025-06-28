@@ -25,14 +25,23 @@ app.listen(PORT, () => {
 // commands collection
 client.commands = new Collection();
 
-// example command setup (add your commands here)
-client.commands.set('ping', {
-  name: 'ping',
-  description: 'Replies with Pong!',
-  execute: async (interaction) => {
-    await interaction.reply('Pong!');
-  },
-});
+// Load commands from commands folder
+const fs = require('fs');
+const path = require('path');
+
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  if ('name' in command && 'execute' in command) {
+    client.commands.set(command.name, command);
+    console.log(`Loaded command: ${command.name}`);
+  } else {
+    console.log(`[WARNING] The command at ${filePath} is missing a required "name" or "execute" property.`);
+  }
+}
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -49,7 +58,7 @@ client.on('messageCreate', async (message) => {
   if (!command) return;
 
   try {
-    await command.execute(message);
+    await command.execute(message, args);
   } catch (error) {
     console.error(error);
     message.reply('There was an error executing that command.');
