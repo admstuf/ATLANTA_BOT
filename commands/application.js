@@ -51,10 +51,10 @@ module.exports = {
         `Reason: ${reason}`
       )
       .addFields(
-        { name: '📋 Type', value: applicationType, inline: true }
+        { name: '📋 Application', value: applicationType, inline: true }
       )
       .setFooter({ 
-        text: `User ID: ${applicantId} | ${isAccepted ? 'Welcome to the team!' : 'Better luck next time!'}` 
+        text: `User ID: ${applicantId} | ${isAccepted ? 'Welcome to the team!' : 'Please apply after 30 days!'}` 
       })
       .setTimestamp();
 
@@ -70,7 +70,7 @@ module.exports = {
     // Always send to results channel
     const resultsChannel = message.guild.channels.cache.get('1380691912234897518');
     if (!resultsChannel) {
-      const reply = await message.reply('⚠️ **Error:** Could not find the results channel. Please contact an administrator.');
+      const reply = await message.reply('⚠️ **Error:** Could not find the results channel. Please contact a bot developer.');
       return setTimeout(() => reply.delete().catch(() => {}), 15000);
     }
 
