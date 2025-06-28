@@ -13,14 +13,14 @@ module.exports = {
 
     // Validate command usage
     if (!args.length || (args[0] !== 'accept' && args[0] !== 'deny')) {
-      const reply = await message.reply('❌ **Usage:** `!application accept/deny <@user> <applicationType> <reason>`');
+      const reply = await message.reply('❌ **Usage:** `!application accept/deny <@user> <applicationType> <reason (required for deny)>`');
       return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
     const action = args[0];
     const userMention = args[1];
     const applicationType = args[2];
-    const reason = args.slice(3).join(' ') || 'No reason provided';
+    const reason = args.slice(3).join(' ');
 
     // Validate user mention
     const userIdMatch = userMention?.match(/^<@!?(\d+)>$/);
@@ -31,31 +31,65 @@ module.exports = {
 
     // Validate application type
     if (!applicationType) {
-      const reply = await message.reply('❌ Please specify the application type (e.g., Staff, Developer, etc.)');
+      const reply = await message.reply('❌ Please specify the application type (SWAT, STAFF, or Supervisor)');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
+    }
+
+    // Check if denial requires reason
+    if (action === 'deny' && !reason) {
+      const reply = await message.reply('❌ A reason is required when denying an application.');
       return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
     const applicantId = userIdMatch[1];
     const isAccepted = action === 'accept';
+    const appType = applicationType.toLowerCase();
+
+    // Get specific messages based on application type
+    let description;
+    let footerText;
+
+    if (appType === 'swat') {
+      if (isAccepted) {
+        description = 'Your SWAT application has been reviewed by our HR team. We are pleased to inform you that you were accepted! We congratulate you of your achievement, please check our departments category for more information.';
+        footerText = `User ID: ${applicantId} | Welcome to SWAT!`;
+      } else {
+        description = `Your SWAT application has been reviewed by our HR team. You unfortunately do not meet the criteria for the SWAT department. You may apply again after 30 days.\n\n**Reason:** ${reason}`;
+        footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
+      }
+    } else if (appType === 'staff') {
+      if (isAccepted) {
+        description = 'Your staff application has been reviewed by our HR team. We are pleased to inform you that you were accepted! We congratulate you of your achievement, and glad you are apart of the team. Please check the Staff Team category for more information.';
+        footerText = `User ID: ${applicantId} | Welcome to the staff team!`;
+      } else {
+        description = `Your staff application has been reviewed by our HR team. You unfortunately do not meet the criteria for our staff team. You may apply again after 30 days.\n\n**Reason:** ${reason}`;
+        footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
+      }
+    } else if (appType === 'supervisor') {
+      if (isAccepted) {
+        description = 'Your LEO supervisor application has been reviewed by our HR team. We are pleased to inform you that you were accepted! We congratulate you of your achievement, please check our departments category for more information.';
+        footerText = `User ID: ${applicantId} | Welcome to LEO Supervision!`;
+      } else {
+        description = `Your LEO supervisor application has been reviewed by our HR team. You unfortunately do not meet the criteria for a LEO Supervisor. You may apply again after 30 days.\n\n**Reason:** ${reason}`;
+        footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
+      }
+    } else {
+      const reply = await message.reply('❌ Invalid application type. Please use: SWAT, STAFF, or Supervisor');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
+    }
 
     // Create main embed
     const embed = new EmbedBuilder()
       .setColor(isAccepted ? '#00ff00' : '#ff4444')
       .setTitle(isAccepted ? '✅ Application Accepted' : '❌ Application Denied')
-      .setDescription(
-        `Your **${applicationType}** application has been **${action === 'accept' ? 'accepted' : 'denied'}**!\n\n` +
-        `${isAccepted 
-          ? "🎉 I'm pleased to inform you that, your application has met our criteria and your application has been accepted by a member of our HR Team!\n" 
-          : "Unfortunately, your application did not meet our current requirements.\n"
-        }` +
-        `Reason: ${reason}`
-      )
+      .setDescription(description)
       .addFields(
-        { name: '📋 Application', value: applicationType, inline: true }
+        { name: '📋 Application', value: applicationType.toUpperCase(), inline: true }
       )
       .setFooter({ 
-        text: `User ID: ${applicantId} | ${isAccepted ? 'Welcome to the team!' : 'Please apply after 30 days!'}` 
+        text: footerText
       })
+      .setThumbnail('https://cdn.discordapp.com/attachments/1380691912234897518/1331436967542071369/Atlanta_Roleplay_BG_1_1751146986931.png?ex=6788cfeb&is=67877e6b&hm=c5f5b1db8a72a4b5f4a598f4aa40d1b4b72c4c6e1b4b5e8b93a39a42b2e5d3f4&')
       .setTimestamp();
 
     // Create disabled reviewer button
