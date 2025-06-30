@@ -1,10 +1,23 @@
 require('dotenv').config();
 const express = require('express');
 const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Collection } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// create express route for health check
+app.get('/', (req, res) => {
+  res.send('Bot is alive!');
+});
+
+// start express server
+app.listen(PORT, () => {
+  console.log(`Express server running on port ${PORT}`);
+});
+
+// initialize discord client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -14,21 +27,10 @@ const client = new Client({
   ],
 });
 
-app.get('/', (req, res) => {
-  res.send('Bot is alive!');
-});
-
-app.listen(PORT, () => {
-  console.log(`Express server running on port ${PORT}`);
-});
-
-// commands collection
+// create commands collection
 client.commands = new Collection();
 
-// Load commands from commands folder
-const fs = require('fs');
-const path = require('path');
-
+// load commands from commands folder
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -43,10 +45,12 @@ for (const file of commandFiles) {
   }
 }
 
+// event: bot ready
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
+// event: message create
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   if (!message.content.startsWith('!')) return;
@@ -65,4 +69,5 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// login to discord
 client.login(process.env.DISCORD_BOT_TOKEN);
