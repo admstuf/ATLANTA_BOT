@@ -2,7 +2,7 @@ name: Scheduled Redeploy
 
 on:
   schedule:
-    - cron: '*/12 * * * *'  # runs every 20 minutes
+    - cron: '*/12 * * * *'  # adjust for your desired interval
 
 permissions:
   contents: write
@@ -14,14 +14,23 @@ jobs:
       - name: Checkout repo with full history
         uses: actions/checkout@v3
         with:
-          ref: main
           fetch-depth: 0
 
-      - name: Trigger empty commit
+      - name: Sync to remote
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git reset --hard origin/main
-          git commit --allow-empty -m "Scheduled redeploy commit"
-          git push origin main --force
+
+      - name: Update timestamp file
+        run: echo "Redeployed at $(date)" > last_deploy_time.txt
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add last_deploy_time.txt
+          git commit -m "Automated redeploy $(date)" || echo "No changes to commit"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
