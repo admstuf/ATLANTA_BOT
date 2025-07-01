@@ -5,7 +5,7 @@ on:
     - cron: '*/20 * * * *'  # runs every 20 minutes
 
 permissions:
-  contents: write
+  contents: write  # allow pushing commits
 
 jobs:
   redeploy:
@@ -20,6 +20,11 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull origin main --rebase
+          echo "Fetching latest changes"
+          git fetch origin main
+          echo "Current branch status before rebase"
+          git status
+          echo "Attempting rebase"
+          git rebase origin/main || (echo "Rebase failed, aborting and resetting"; git rebase --abort; git reset --hard origin/main)
           git commit --allow-empty -m "Scheduled redeploy commit"
           git push origin main
