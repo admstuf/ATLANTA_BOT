@@ -5,14 +5,16 @@ on:
     - cron: '*/20 * * * *'  # runs every 20 minutes
 
 permissions:
-  contents: write  # allow workflow to push commits
+  contents: write
 
 jobs:
   redeploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout repo with full history
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Trigger empty commit
         run: |
