@@ -30,7 +30,7 @@ module.exports = {
 
     // Validate application type
     if (!applicationType) {
-      const reply = await message.reply('Please specify the application type (SWAT, STAFF, SUPERVISOR, or MEDIA)');
+      const reply = await message.reply('Please specify the application type (SWAT, STAFF, Supervisor, or Media)');
       return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
@@ -44,26 +44,11 @@ module.exports = {
     const isAccepted = action === 'accept';
     const appType = applicationType.toLowerCase();
 
-    // Determine display name for the application type
-    let displayApplicationType;
-    if (appType === 'swat') {
-      displayApplicationType = 'SWAT';
-    } else if (appType === 'staff') {
-      displayApplicationType = 'Staff Team';
-    } else if (appType === 'supervisor') {
-      displayApplicationType = 'LEO Supervisor';
-    } else if (appType === 'media') {
-      displayApplicationType = 'Media Team';
-    } else {
-      const reply = await message.reply('Invalid application type. Please use: SWAT, Staff, Supervisor, or Media.');
-      return setTimeout(() => reply.delete().catch(() => {}), 10000);
-    }
-
-    // Get specific messages based on application type
-    let description;
-    let footerText;
+    // Create embed variables
+    let description, footerText, thumbnailUrl;
 
     if (appType === 'swat') {
+      thumbnailUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448470221295697/SWAT_TEAM_APPLICATION.png';
       if (isAccepted) {
         description = 'Your SWAT application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check our departments category for more information.';
         footerText = `User ID: ${applicantId} | Welcome to SWAT!`;
@@ -72,6 +57,7 @@ module.exports = {
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else if (appType === 'staff') {
+      thumbnailUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448469499875378/STAFF_TEAM_APPLICATION.png';
       if (isAccepted) {
         description = 'Your staff application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check the Staff Team category for more information.';
         footerText = `User ID: ${applicantId} | Welcome to the staff team!`;
@@ -80,6 +66,7 @@ module.exports = {
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else if (appType === 'supervisor') {
+      thumbnailUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448469856387112/SUPERVISOR_APPLICATION.png';
       if (isAccepted) {
         description = 'Your LEO supervisor application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check our departments category for more information.';
         footerText = `User ID: ${applicantId} | Welcome to LEO Supervision!`;
@@ -88,6 +75,7 @@ module.exports = {
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else if (appType === 'media') {
+      thumbnailUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448469105606739/MEDIA_TEAM_APPLICATION.png';
       if (isAccepted) {
         description = 'Your Media Team application has been reviewed by our Media Directing team. We are pleased to inform you that you were accepted! Please check the Media Team category for more information.';
         footerText = `User ID: ${applicantId} | Welcome to the Media Team!`;
@@ -95,6 +83,9 @@ module.exports = {
         description = `Your Media Team application has been reviewed by our Media Directing team. You unfortunately do not meet the criteria for the Media Team. You may apply again after 30 days.\n\nReason: ${reason}`;
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
+    } else {
+      const reply = await message.reply('Invalid application type. Please use: SWAT, Staff, Supervisor, or Media');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
     // Create main embed
@@ -102,13 +93,9 @@ module.exports = {
       .setColor(isAccepted ? '#00ff00' : '#ff4444')
       .setTitle(isAccepted ? 'Application Accepted' : 'Application Denied')
       .setDescription(description)
-      .addFields(
-        { name: 'Application', value: displayApplicationType, inline: true }
-      )
-      .setFooter({ 
-        text: footerText
-      })
-      .setThumbnail('https://cdn.discordapp.com/attachments/1387335633550184590/1388647620955607140/Atlanta_Roleplay_BG_1.png')
+      .addFields({ name: 'Application', value: applicationType.toLowerCase() === 'media' ? 'Media Team' : applicationType.toUpperCase(), inline: true })
+      .setFooter({ text: footerText })
+      .setThumbnail(thumbnailUrl)
       .setTimestamp();
 
     // Create disabled reviewer button
@@ -135,20 +122,16 @@ module.exports = {
         components: [row]
       });
 
-      // Send confirmation message that auto-deletes
       const confirmation = await message.reply(
         `**Application ${action}ed!** Results posted in <#1380691912234897518>`
       );
-
-      // Auto-delete confirmation after 8 seconds
       setTimeout(() => confirmation.delete().catch(() => {}), 8000);
 
-      // Try to DM the user (optional, won't fail if can't DM)
       try {
         const user = await message.guild.members.fetch(applicantId);
         await user.send({ embeds: [embed], components: [row] });
       } catch {
-        // Silently fail if can't DM - not critical
+        // Silently fail if can't DM
       }
 
     } catch (error) {
