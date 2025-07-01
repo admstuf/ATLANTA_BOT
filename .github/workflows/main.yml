@@ -14,6 +14,7 @@ jobs:
       - name: Checkout repo with full history
         uses: actions/checkout@v3
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Trigger empty commit
@@ -24,4 +25,5 @@ jobs:
           git reset --hard origin/main
           git commit --allow-empty -m "Scheduled redeploy commit"
           git push origin main --force
+
 
