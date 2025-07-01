@@ -2,26 +2,22 @@ name: Scheduled Redeploy
 
 on:
   schedule:
-    # runs every 30 minutes
-    - cron: '*/30 * * * *'
+    - cron: '*/20 * * * *'  # runs every 20 minutes
+
+permissions:
+  contents: write  # allow workflow to push commits
 
 jobs:
   redeploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Update timestamp file
-        run: echo "Redeployed at $(date)" > last_deploy_time.txt
-
-      - name: Commit changes
+      - name: Trigger empty commit
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add last_deploy_time.txt
-          git commit -m "Automated redeploy $(date)" || echo "No changes to commit"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "Scheduled redeploy commit"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
