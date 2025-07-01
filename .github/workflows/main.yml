@@ -18,6 +18,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase
           git commit --allow-empty -m "Scheduled redeploy commit"
-          git push
-
+          git push origin main
