@@ -30,7 +30,7 @@ module.exports = {
 
     // Validate application type
     if (!applicationType) {
-      const reply = await message.reply('Please specify the application type (SWAT, STAFF, or Supervisor)');
+      const reply = await message.reply('Please specify the application type (SWAT, STAFF, SUPERVISOR, or MEDIA)');
       return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
@@ -48,8 +48,15 @@ module.exports = {
     let displayApplicationType;
     if (appType === 'swat') {
       displayApplicationType = 'SWAT';
+    } else if (appType === 'staff') {
+      displayApplicationType = 'Staff Team';
+    } else if (appType === 'supervisor') {
+      displayApplicationType = 'LEO Supervisor';
+    } else if (appType === 'media') {
+      displayApplicationType = 'Media Team';
     } else {
-      displayApplicationType = applicationType.charAt(0).toUpperCase() + applicationType.slice(1).toLowerCase();
+      const reply = await message.reply('Invalid application type. Please use: SWAT, Staff, Supervisor, or Media.');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
     // Get specific messages based on application type
@@ -80,9 +87,14 @@ module.exports = {
         description = `Your LEO supervisor application has been reviewed by our HR team. You unfortunately do not meet the criteria for a LEO Supervisor. You may apply again after 30 days.\n\nReason: ${reason}`;
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
-    } else {
-      const reply = await message.reply('Invalid application type. Please use: SWAT, Staff, or Supervisor');
-      return setTimeout(() => reply.delete().catch(() => {}), 10000);
+    } else if (appType === 'media') {
+      if (isAccepted) {
+        description = 'Your Media Team application has been reviewed by our Media Directing team. We are pleased to inform you that you were accepted! Please check the Media Team category for more information.';
+        footerText = `User ID: ${applicantId} | Welcome to the Media Team!`;
+      } else {
+        description = `Your Media Team application has been reviewed by our Media Directing team. You unfortunately do not meet the criteria for the Media Team. You may apply again after 30 days.\n\nReason: ${reason}`;
+        footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
+      }
     }
 
     // Create main embed
@@ -96,7 +108,7 @@ module.exports = {
       .setFooter({ 
         text: footerText
       })
-      .setThumbnail('https://cdn.discordapp.com/attachments/1387335633550184590/1388647620955607140/Atlanta_Roleplay_BG_1.png') // Updated thumbnail URL
+      .setThumbnail('https://cdn.discordapp.com/attachments/1387335633550184590/1388647620955607140/Atlanta_Roleplay_BG_1.png')
       .setTimestamp();
 
     // Create disabled reviewer button
