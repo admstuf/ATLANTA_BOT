@@ -2,7 +2,7 @@ name: Scheduled Redeploy
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/20 * * * *'  # runs every 20 minutes
 
 permissions:
   contents: write
@@ -23,4 +23,5 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           git commit --allow-empty -m "Scheduled redeploy commit"
-          git push origin main
+          git push origin main --force
+
