@@ -87,7 +87,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(isAccepted ? '#00ff00' : '#ff4444')
       .setTitle(isAccepted ? 'Application Accepted' : 'Application Denied')
-      .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024')
+      .setThumbnail('https://cdn.discordapp.com/attachments/1385162246707220551/1390213797897179218/IMG_5237-removebg-preview.png?ex=686819be&is=6866c83e&hm=a592788b28acba6f939c409ee7c8bc64159675f23449428055c6b0c575ab330f&')
       .setDescription(description)
       .addFields({ name: 'Application', value: applicationType.charAt(0).toUpperCase() + applicationType.slice(1), inline: true })
       .setImage(bottomImage)
