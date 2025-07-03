@@ -2,65 +2,62 @@ const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('
 
 module.exports = {
   name: 'partner',
-  description: 'Create a partnership announcement.',
+  description: 'Send a partner invite embed with a custom message.',
   async execute(message, args) {
-    const allowedRoleId = '1390447159249211587';
-
-    // role check
+    // permissions check (adjust role id as needed)
+    const allowedRoleId = '1390447159249211587'; 
     if (!message.member.roles.cache.has(allowedRoleId)) {
-      return message.reply('🚫 You do not have the required role to use this command.');
+      const reply = await message.reply('🚫 You do not have permission to use this command.');
+      return setTimeout(() => reply.delete().catch(() => {}), 8000);
     }
 
-    // basic usage validation
-    if (args.length < 2) {
-      return message.reply('Usage: `!partner <@partnerUser> <partnershipDetails>`');
+    if (args.length < 3) {
+      const reply = await message.reply('**Usage:** `!partner [representative] [invite link] [message]`');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
-    const partnerMention = args[0];
-    const partnershipDetails = args.slice(1).join(' ');
+    const representative = args[0];
+    const inviteLink = args[1];
+    const customMessage = args.slice(2).join(' ');
 
-    // validate mention
-    const partnerIdMatch = partnerMention.match(/^<@!?(\d+)>$/);
-    if (!partnerIdMatch) {
-      return message.reply('Please mention a valid user to partner with.');
+    // Validate invite link format (basic check)
+    if (!inviteLink.startsWith('http')) {
+      const reply = await message.reply('Please provide a valid invite link starting with http/https.');
+      return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
-    const partnerId = partnerIdMatch[1];
-
-    // create embed
+    // Build embed
     const embed = new EmbedBuilder()
-      .setColor('#3498db')
-      .setTitle('🤝 New Partnership Established!')
-      .setDescription(partnershipDetails)
+      .setColor('#0099ff')
+      .setTitle('🤝 Atlanta Roleplay Affiliates')
+      .setDescription(customMessage)
       .addFields(
-        { name: 'Partnered With', value: `<@${partnerId}>`, inline: false }
+        { name: 'Representative', value: representative, inline: true },
+        { name: 'Invite Link', value: inviteLink, inline: true }
       )
-      .setThumbnail('https://cdn.discordapp.com/attachments/1385162246707220551/1390213797897179218/IMG_5237-removebg-preview.png?ex=686819be&is=6866c83e&hm=a592788b28acba6f939c409ee7c8bc64159675f23449428055c6b0c575ab330f&')
-      .setFooter({ text: 'Atlanta Roleplay | Partnership Program' })
+      .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024')
       .setTimestamp();
 
-    // create disabled partner button
-    const partnerButton = new ButtonBuilder()
-      .setLabel(`Partner: ${message.guild.members.cache.get(partnerId)?.displayName || 'Unknown'}`)
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(true)
-      .setCustomId('partner_with');
+    // Button labeled "Atlanta Roleplay Affiliates" linking to invite
+    const button = new ButtonBuilder()
+      .setLabel('Atlanta Roleplay Affiliates')
+      .setStyle(ButtonStyle.Link)
+      .setURL(inviteLink);
 
-    const row = new ActionRowBuilder().addComponents(partnerButton);
+    const row = new ActionRowBuilder().addComponents(button);
 
     try {
-      const sentMessage = await message.channel.send({
-        embeds: [embed],
-        components: [row],
-      });
+      await message.channel.send({ embeds: [embed], components: [row] });
 
-      // add handshake reaction automatically
-      await sentMessage.react('🤝');
+      const confirmation = await message.reply('✅ Partner invite sent!');
+      setTimeout(() => confirmation.delete().catch(() => {}), 7000);
     } catch (error) {
       console.error('Partner command error:', error);
-      message.reply('⚠️ An error occurred while creating the partnership announcement.');
+      const errorReply = await message.reply('⚠️ Failed to send partner invite. Please try again.');
+      setTimeout(() => errorReply.delete().catch(() => {}), 10000);
     }
   },
 };
+
 
 
