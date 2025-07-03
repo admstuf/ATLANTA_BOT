@@ -4,8 +4,10 @@ module.exports = {
   name: 'application',
   description: 'Accept or deny an application.',
   async execute(message, args) {
-    if (!message.member.roles.cache.some(role => role.name === 'Discord Moderator')) {
-      const reply = await message.reply('Only users with the **Discord Moderator** role can use this command.');
+    const allowedRoleId = '1390447159249211587'; // role allowed to use application command
+
+    if (!message.member.roles.cache.has(allowedRoleId)) {
+      const reply = await message.reply('🚫 You do not have permission to use this command.');
       return setTimeout(() => reply.delete().catch(() => {}), 8000);
     }
 
@@ -26,7 +28,7 @@ module.exports = {
     }
 
     if (!applicationType) {
-      const reply = await message.reply('Please specify the application type (swat, staff, supervisor, or media)');
+      const reply = await message.reply('Please specify the application type (swat, staff, supervisor, or media).');
       return setTimeout(() => reply.delete().catch(() => {}), 10000);
     }
 
@@ -39,42 +41,46 @@ module.exports = {
     const isAccepted = action === 'accept';
     const appType = applicationType.toLowerCase();
 
-    let description, footerText, imageUrl;
+    let description, footerText, imageUrl, prettyType;
 
     if (appType === 'swat') {
+      prettyType = 'Swat';
       imageUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448470221295697/SWAT_TEAM_APPLICATION.png';
       if (isAccepted) {
         description = 'Your swat application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check our departments category for more information.';
-        footerText = `User ID: ${applicantId} | Welcome to swat!`;
+        footerText = `User ID: ${applicantId} | Welcome to Swat!`;
       } else {
-        description = `Your swat application has been reviewed by our HR team. You unfortunately do not meet the criteria for the swat department. You may apply again after 30 days.\n\nReason: ${reason}`;
+        description = `Your swat application has been reviewed by our HR team. You unfortunately do not meet the criteria for Swat. You may apply again after 30 days.\n\nReason: ${reason}`;
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else if (appType === 'staff') {
+      prettyType = 'Staff';
       imageUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448469499875378/STAFF_TEAM_APPLICATION.png';
       if (isAccepted) {
-        description = 'Your staff application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check the staff team category for more information.';
-        footerText = `User ID: ${applicantId} | Welcome to the staff team!`;
+        description = 'Your staff application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check the Staff Team category for more information.';
+        footerText = `User ID: ${applicantId} | Welcome to the Staff Team!`;
       } else {
-        description = `Your staff application has been reviewed by our HR team. You unfortunately do not meet the criteria for our staff team. You may apply again after 30 days.\n\nReason: ${reason}`;
+        description = `Your staff application has been reviewed by our HR team. You unfortunately do not meet the criteria for the Staff Team. You may apply again after 30 days.\n\nReason: ${reason}`;
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else if (appType === 'supervisor') {
+      prettyType = 'Supervisor';
       imageUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448469856387112/SUPERVISOR_APPLICATION.png';
       if (isAccepted) {
         description = 'Your supervisor application has been reviewed by our HR team. We are pleased to inform you that you were accepted! Please check our departments category for more information.';
-        footerText = `User ID: ${applicantId} | Welcome to supervision!`;
+        footerText = `User ID: ${applicantId} | Welcome to Supervision!`;
       } else {
-        description = `Your supervisor application has been reviewed by our HR team. You unfortunately do not meet the criteria for a supervisor. You may apply again after 30 days.\n\nReason: ${reason}`;
+        description = `Your supervisor application has been reviewed by our HR team. You unfortunately do not meet the criteria for Supervisor. You may apply again after 30 days.\n\nReason: ${reason}`;
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else if (appType === 'media') {
+      prettyType = 'Media';
       imageUrl = 'https://cdn.discordapp.com/attachments/1385162246707220551/1389448469105606739/MEDIA_TEAM_APPLICATION.png';
       if (isAccepted) {
-        description = 'Your media team application has been reviewed by our media directing team. We are pleased to inform you that you were accepted! Please check the media team category for more information.';
-        footerText = `User ID: ${applicantId} | Welcome to the media team!`;
+        description = 'Your media team application has been reviewed by our Media Directing team. We are pleased to inform you that you were accepted! Please check the Media Team category for more information.';
+        footerText = `User ID: ${applicantId} | Welcome to the Media Team!`;
       } else {
-        description = `Your media team application has been reviewed by our media directing team. You unfortunately do not meet the criteria for the media team. You may apply again after 30 days.\n\nReason: ${reason}`;
+        description = `Your media team application has been reviewed by our Media Directing team. You unfortunately do not meet the criteria for the Media Team. You may apply again after 30 days.\n\nReason: ${reason}`;
         footerText = `User ID: ${applicantId} | Please apply after 30 days!`;
       }
     } else {
@@ -86,9 +92,10 @@ module.exports = {
       .setColor(isAccepted ? '#00ff00' : '#ff4444')
       .setTitle(isAccepted ? 'Application Accepted' : 'Application Denied')
       .setDescription(description)
-      .addFields({ name: 'Application', value: appType, inline: true })
+      .addFields({ name: 'Application', value: prettyType, inline: true })
+      .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024')
       .setFooter({ text: footerText })
-      .setImage(imageUrl) // sets image at the bottom
+      .setImage(imageUrl)
       .setTimestamp();
 
     const reviewerButton = new ButtonBuilder()
@@ -119,7 +126,7 @@ module.exports = {
         const user = await message.guild.members.fetch(applicantId);
         await user.send({ embeds: [embed], components: [row] });
       } catch {
-        // silently fail if dms closed
+        // silently fail if DMs closed
       }
 
     } catch (error) {
@@ -129,4 +136,5 @@ module.exports = {
     }
   },
 };
+
 

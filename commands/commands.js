@@ -1,31 +1,35 @@
-
 const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'commands',
-  description: 'List all available bot commands.',
+  description: 'List all available commands.',
+
   async execute(message) {
+    const allowedRoleId = '1390447159249211587'; // role allowed to view commands
+
+    if (!message.member.roles.cache.has(allowedRoleId)) {
+      return message.reply("❌ You don't have permission to view the commands list.");
+    }
+
     const embed = new EmbedBuilder()
-      .setTitle('📜 Bot Commands')
-      .setColor(0x0099ff)
-      .setDescription('Here are the commands you can use with this bot:')
-      .addFields(
-        { name: '!mute @user <minutes> <reason>', value: 'Mute a user temporarily.' },
-        { name: '!warn @user <reason>', value: 'Warn a user.' },
-        { name: '!kick @user <reason>', value: 'Kick a user from the server.' },
-        { name: '!ban @user <reason>', value: 'Ban a user from the server.' },
-        { name: '!application accept|deny @user <type> <reason>', value: 'Accept or deny an application.' },
-        { name: '!restart', value: 'Restart the bot (Discord Moderator only).' },
-        { name: '!commands', value: 'Show this command list.' }
+      .setTitle('Available Commands')
+      .setDescription(
+        '**Moderation Commands (Role 1390448241828565002 required):**\n' +
+        '`!ban @user [reason]` - Ban a user\n' +
+        '`!kick @user [reason]` - Kick a user\n' +
+        '`!warn @user [reason]` - Warn a user\n\n' +
+        '**Application Commands (Role 1390447159249211587 required):**\n' +
+        '`!application accept/deny <@user> <type> <reason>` - Accept or deny applications\n' +
+        '`!partner <@user>` - Partner with a user\n\n' +
+        '**Other Commands:**\n' +
+        '`!commands` - Show this list'
       )
-      .setFooter({ text: `Requested by ${message.author.tag}` })
+      .setColor('#0099ff')
+      .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024')
       .setTimestamp();
 
-    try {
-      await message.channel.send({ embeds: [embed] });
-    } catch (error) {
-      console.error('Failed to send commands embed:', error);
-      await message.reply('⚠️ Could not send the commands list.');
-    }
+    await message.channel.send({ embeds: [embed] });
   }
 };
+
+

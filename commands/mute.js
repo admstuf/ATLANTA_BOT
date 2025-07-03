@@ -1,13 +1,15 @@
-
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'mute',
   description: 'Mute a user for a specified number of minutes.',
-  permissions: PermissionsBitField.Flags.MuteMembers,
 
   async execute(message, args) {
-    if (!message.member.permissions.has(this.permissions)) {
+    const allowedRoleId = '1390447159249211587'; // role for apps & partners
+    const hasPermission = message.member.permissions.has(PermissionsBitField.Flags.MuteMembers);
+    const hasRole = message.member.roles.cache.has(allowedRoleId);
+
+    if (!hasPermission && !hasRole) {
       return message.reply("❌ You don't have permission to mute members.");
     }
 
@@ -19,7 +21,7 @@ module.exports = {
     if (isNaN(minutes)) return message.reply("❌ Please specify a valid number of minutes.");
 
     if (!user.manageable) {
-      return message.reply("❌ I can't mute this user. They might have higher role than me.");
+      return message.reply("❌ I can't mute this user. They might have a higher role than me.");
     }
 
     let mutedRole = message.guild.roles.cache.find(r => r.name === 'Muted');

@@ -1,13 +1,13 @@
-
-const { PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'ban',
   description: 'Ban a user.',
-  permissions: PermissionsBitField.Flags.BanMembers,
 
   async execute(message, args) {
-    if (!message.member.permissions.has(this.permissions)) {
+    const allowedRoleId = '1390448241828565002'; // role required for ban command
+
+    if (!message.member.roles.cache.has(allowedRoleId)) {
       return message.reply("❌ You don't have permission to ban members.");
     }
 
@@ -27,6 +27,7 @@ module.exports = {
           { name: 'Banned by', value: `<@${message.author.id}>`, inline: true }
         )
         .setColor('DarkRed')
+        .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024')
         .setTimestamp();
 
       await message.channel.send({ embeds: [embed] });
@@ -36,3 +37,4 @@ module.exports = {
     }
   }
 };
+
