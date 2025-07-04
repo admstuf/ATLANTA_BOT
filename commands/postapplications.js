@@ -59,24 +59,9 @@ module.exports = {
       await message.channel.send({ embeds: [embed], components: [row] });
     } catch (error) {
       console.error('Failed to send application post:', error);
-      message.reply('❌ There was an error posting the application message.');
+      await message.reply('❌ There was an error posting the application message.');
     }
   },
 };
-    );
 
-    try {
-      await message.channel.send({ embeds: [embed], components: [buttons] });
-      await message.reply('✅ Application info posted successfully.');
-    } catch (error) {
-      console.error('Failed to post application info:', error);
-      await message.reply('⚠️ Failed to post application info.');
-    }
-  },
-};
-      const row = new ActionRowBuilder().addComponents(button);
 
-      await message.channel.send({ embeds: [embed], components: [row] });
-    }
-  }
-};
