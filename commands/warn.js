@@ -4,7 +4,7 @@ module.exports = {
   name: 'warn',
   description: 'Warn a member.',
   async execute(message, args) {
-    const allowedRoleId = '1390448241828565002'; // role required for warn command
+    const allowedRoleId = '1390759183376453764'; // role required for warn command
 
     if (!message.member.roles.cache.has(allowedRoleId)) {
       return message.reply('🚫 You do not have permission to use this command.');

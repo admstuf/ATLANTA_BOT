@@ -4,8 +4,8 @@ module.exports = {
   name: 'commands',
   description: 'List all available commands with role info.',
   async execute(message) {
-    const traineeModRole = '<@&1390447159249211587>'; // application, partner role
-    const modRole = '<@&1390448241828565002>'; // ban, kick, warn role
+    const traineeModRole = '<@&1390759183376453764>'; // application, partner role
+    const modRole = '<@&1390759296232587325>'; // ban, kick, warn role
 
     const embed = new EmbedBuilder()
       .setColor('#0099ff')

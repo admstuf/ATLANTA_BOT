@@ -5,7 +5,7 @@ module.exports = {
   description: 'Ban a user.',
 
   async execute(message, args) {
-    const allowedRoleId = '1390448241828565002'; // role required for ban command
+    const allowedRoleId = '1390759296232587325'; // role required for ban command
 
     if (!message.member.roles.cache.has(allowedRoleId)) {
       return message.reply("❌ You don't have permission to ban members.");

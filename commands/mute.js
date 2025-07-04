@@ -5,7 +5,7 @@ module.exports = {
   description: 'Mute a user for a specified number of minutes.',
 
   async execute(message, args) {
-    const allowedRoleId = '1390447159249211587'; // role for apps & partners
+    const allowedRoleId = '1390759183376453764'; // role for apps & partners
     const hasPermission = message.member.permissions.has(PermissionsBitField.Flags.MuteMembers);
     const hasRole = message.member.roles.cache.has(allowedRoleId);
 
