@@ -1,28 +1,17 @@
-const {
-  EmbedBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  ChannelType,
-  PermissionFlagsBits,
-  ButtonBuilder,
-  ButtonStyle,
-  Events,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  InteractionType,
-} = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ChannelType, PermissionFlagsBits, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
 
 module.exports = {
   name: 'ticket',
   description: 'Open the ticket panel',
   async execute(message) {
+    // Check if the user has the role allowed to run !ticket
     const allowedRoleId = '1387493566225322114'; // role who can run !ticket
     if (!message.member.roles.cache.has(allowedRoleId)) {
       const reply = await message.reply('🚫 You do not have permission to use this command.');
       return setTimeout(() => reply.delete().catch(() => {}), 8000);
     }
 
+    // Create embed
     const embed = new EmbedBuilder()
       .setTitle('🎫 Open a Ticket')
       .setDescription(
@@ -33,7 +22,7 @@ module.exports = {
         `🎮 | **In-game Support**: To report a player in-game, used for mod scenes.\n\n` +
         `📷 | **Media Application**: Open this ticket to apply for Atlanta Media Team!`
       )
-      .setColor('Red');
+      .setColor('#8B0000');
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('ticket_category')
@@ -65,7 +54,7 @@ module.exports = {
         },
         {
           label: 'Media Application',
-          description: 'Apply for the Atlanta Media Team',
+          description: 'Apply for Atlanta Media Team',
           value: 'media',
           emoji: '📷',
         },
@@ -77,132 +66,147 @@ module.exports = {
   },
 
   async setup(client) {
-    const categoryId = '1380595048273412127';
+    client.on(Events.InteractionCreate, async (interaction) => {
+      if (!interaction.isStringSelectMenu()) return;
+      if (interaction.customId !== 'ticket_category') return;
 
-    const roleMap = {
-      ingame: '1379853523986022510',
-      management: '1379809709871071352',
-      general: '1390942686026010645',
-      partnership: '1379809709871071352',
-      media: '1390942686026010645', // Assuming same as general, change if needed
-    };
+      const categoryId = '1380595048273412127'; // category for ticket channels
+      const category = interaction.values[0];
+      const user = interaction.user;
+
+      // Map ticket categories to claim roles
+      const roleMap = {
+        ingame: '1379853523986022510',
+        management: '1379809709871071352',
+        general: '1390942686026010645',
+        partnership: '1379809709871071352',
+        media: '1390951563366895647',
+      };
+
+      const allowedRole = roleMap[category];
+      const channelName = `ticket-${category}-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+      // Create ticket channel
+      const channel = await interaction.guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildText,
+        parent: categoryId,
+        permissionOverwrites: [
+          { id: interaction.guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+          { id: allowedRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+        ],
+      });
+
+      const ticketEmbed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket: ${category.charAt(0).toUpperCase() + category.slice(1)}`)
+        .setDescription(`Hello ${user}, thank you for opening a **${category}** ticket. Please explain your issue or request below.`)
+        .setColor('#8B0000');
+
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('close_ticket')
+          .setLabel('🔒 Close Ticket')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('claim_ticket')
+          .setLabel('🛡️ Claim Ticket')
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      await channel.send({ content: `<@${user.id}>`, embeds: [ticketEmbed], components: [buttons] });
+      await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
+    });
 
     client.on(Events.InteractionCreate, async (interaction) => {
-      // Handle ticket category select menu
-      if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_category') {
-        const category = interaction.values[0];
-        const user = interaction.user;
-        const allowedRole = roleMap[category];
-        const channelName = `ticket-${category}-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+      if (!interaction.isButton()) return;
 
-        // Create channel with permissions
-        const channel = await interaction.guild.channels.create({
-          name: channelName,
-          type: ChannelType.GuildText,
-          parent: categoryId,
-          permissionOverwrites: [
-            { id: interaction.guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-            { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-            { id: allowedRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-          ],
-        });
+      const { customId, channel, user } = interaction;
 
-        const ticketEmbed = new EmbedBuilder()
-          .setTitle(`🎫 Ticket: ${category.charAt(0).toUpperCase() + category.slice(1)}`)
-          .setDescription(`Hello ${user}, thank you for opening a **${category}** ticket. Please explain your issue or request below.`)
-          .setColor('Red');
+      // Find ticket owner from permission overwrites
+      const ticketOwnerOverwrite = channel.permissionOverwrites.cache.find(po => po.type === 1 && po.allow.has(PermissionFlagsBits.ViewChannel));
+      const ticketOwnerId = ticketOwnerOverwrite ? ticketOwnerOverwrite.id : null;
 
-        const buttons = new ActionRowBuilder().addComponents(
+      // Get ticket category from channel name
+      const ticketCategory = channel.name.split('-')[1];
+
+      const roleMap = {
+        ingame: '1379853523986022510',
+        management: '1379809709871071352',
+        general: '1390942686026010645',
+        partnership: '1379809709871071352',
+        media: '1390951563366895647',
+      };
+
+      if (customId === 'close_ticket') {
+        // Ask for confirmation before closing with buttons
+        const confirmRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId('close_ticket')
-            .setLabel('🔒 Close Ticket')
+            .setCustomId('confirm_close')
+            .setLabel('✅ Confirm Close')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
-            .setCustomId('claim_ticket')
-            .setLabel('🛡️ Claim Ticket')
-            .setStyle(ButtonStyle.Primary)
+            .setCustomId('cancel_close')
+            .setLabel('❌ Cancel')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('close_with_reason')
+            .setLabel('📄 Close with Reason')
+            .setStyle(ButtonStyle.Secondary)
         );
-
-        await channel.send({ content: `<@${user.id}>`, embeds: [ticketEmbed], components: [buttons] });
-        await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
+        await interaction.reply({ content: 'Are you sure you want to close this ticket?', components: [confirmRow], ephemeral: true });
       }
 
-      // Handle buttons
-      if (interaction.isButton()) {
-        const { customId, channel, user } = interaction;
-        const ticketOwnerId = channel.permissionOverwrites.cache.find(po => po.type === 1 && po.allow.has(PermissionFlagsBits.ViewChannel))?.id;
-        if (customId === 'close_ticket') {
-          // Show modal to enter reason
-          const modal = new ModalBuilder()
-            .setCustomId('close_ticket_modal')
-            .setTitle('Close Ticket Reason');
-
-          const reasonInput = new TextInputBuilder()
-            .setCustomId('close_reason_input')
-            .setLabel('Reason for closing the ticket (optional)')
-            .setStyle(TextInputStyle.Paragraph)
-            .setRequired(false);
-
-          const row = new ActionRowBuilder().addComponents(reasonInput);
-          modal.addComponents(row);
-
-          await interaction.showModal(modal);
-        }
-
-        if (customId === 'claim_ticket') {
-          const ticketCategory = channel.name.split('-')[1];
-          const allowedRoleId = roleMap[ticketCategory];
-          if (!allowedRoleId) {
-            return interaction.reply({ content: 'This ticket category does not have a claim role setup.', ephemeral: true });
-          }
-          if (!interaction.member.roles.cache.has(allowedRoleId)) {
-            return interaction.reply({ content: '🚫 You do not have permission to claim this ticket.', ephemeral: true });
-          }
-
-          await channel.send(`🛡️ Ticket claimed by <@${user.id}>. <@${ticketOwnerId}> you have been notified.`);
-          await interaction.reply({ content: '✅ You have claimed this ticket.', ephemeral: true });
-        }
+      if (customId === 'confirm_close') {
+        await channel.delete().catch(() => {});
+        await interaction.reply({ content: 'Ticket closed and channel deleted.', ephemeral: true });
       }
 
-      // Handle modal submit for closing ticket
-      if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'close_ticket_modal') {
-        const reason = interaction.fields.getTextInputValue('close_reason_input') || 'No reason provided';
-        const channel = interaction.channel;
+      if (customId === 'cancel_close') {
+        await interaction.reply({ content: 'Ticket close canceled.', ephemeral: true });
+      }
 
-        // Fetch all messages from the channel for transcript
-        const messages = await channel.messages.fetch({ limit: 100 });
-        const sortedMessages = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+      if (customId === 'close_with_reason') {
+        await interaction.reply({ content: 'Please send your reason for closing this ticket. This will auto-close after you send the reason.', ephemeral: true });
 
-        let transcript = `Transcript for ticket: ${channel.name}\nClosed by: ${interaction.user.tag}\nReason: ${reason}\n\n`;
+        const filter = m => m.author.id === user.id && m.channel.id === channel.id;
+        const collector = channel.createMessageCollector({ filter, max: 1, time: 120000 });
 
-        sortedMessages.forEach(msg => {
-          const time = new Date(msg.createdTimestamp).toLocaleString();
-          transcript += `[${time}] ${msg.author.tag}: ${msg.content}\n`;
+        collector.on('collect', async (m) => {
+          await channel.send(`🔒 Ticket closed by ${user.tag} with reason: ${m.content}`);
+          await channel.delete().catch(() => {});
+
+          // Optionally, send transcript logic here
+          // (Implement your transcript sending to ticketOwner and claimer)
         });
 
-        // Send transcript DMs
-        const ticketOwnerId = channel.permissionOverwrites.cache.find(po => po.type === 1 && po.allow.has(PermissionFlagsBits.ViewChannel))?.id;
-        const claimMessage = await channel.messages.fetch({ limit: 10 }).then(msgs => msgs.find(m => m.content.includes('Ticket claimed by')));
-        const claimerId = claimMessage ? claimMessage.mentions.users.first()?.id : null;
+        collector.on('end', (collected) => {
+          if (collected.size === 0) {
+            interaction.followUp({ content: '⏰ You did not provide a reason in time.', ephemeral: true });
+          }
+        });
+      }
 
-        try {
-          if (ticketOwnerId) {
-            const userDM = await interaction.client.users.fetch(ticketOwnerId);
-            await userDM.send(`Your ticket **${channel.name}** has been closed.\nReason: ${reason}\n\nTranscript:\n\`\`\`\n${transcript}\n\`\`\``);
-          }
-          if (claimerId) {
-            const claimerDM = await interaction.client.users.fetch(claimerId);
-            await claimerDM.send(`Ticket **${channel.name}** you claimed has been closed.\nReason: ${reason}\n\nTranscript:\n\`\`\`\n${transcript}\n\`\`\``);
-          }
-        } catch {
-          // DM might be closed, ignore errors
+      if (customId === 'claim_ticket') {
+        const allowedRoleId = roleMap[ticketCategory];
+        if (!allowedRoleId) return interaction.reply({ content: '🚫 This ticket category cannot be claimed.', ephemeral: true });
+
+        if (!interaction.member.roles.cache.has(allowedRoleId)) {
+          return interaction.reply({ content: '🚫 You do not have permission to claim this ticket.', ephemeral: true });
         }
 
-        await interaction.reply({ content: '🔒 Ticket is now closed and transcript sent.', ephemeral: true });
-        await channel.delete().catch(() => {});
+        // Ping ticket owner and tag the claimer
+        if (ticketOwnerId) {
+          await channel.send(`🛡️ Ticket claimed by ${interaction.user}. <@${ticketOwnerId}>`);
+        } else {
+          await channel.send(`🛡️ Ticket claimed by ${interaction.user}.`);
+        }
+
+        await interaction.reply({ content: '✅ You have claimed this ticket.', ephemeral: true });
       }
     });
   },
 };
+
 
 

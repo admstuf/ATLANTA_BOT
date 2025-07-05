@@ -85,9 +85,9 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
-      .setColor(isAccepted ? '#00ff00' : '#ff4444')
+      .setColor('#8B0000')
       .setTitle(isAccepted ? 'Application Accepted' : 'Application Denied')
-      .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024')
+      .setThumbnail('https://cdn.discordapp.com/attachments/1385162246707220551/1390952762212352071/IMG_5237-removebg-preview.png?ex=686a2135&is=6868cfb5&hm=be1b6f5843304e281f939599a7ab8a8711e94e6935072e712f6411717ecf54a6&')
       .setDescription(description)
       .addFields({ name: 'Application', value: applicationType.charAt(0).toUpperCase() + applicationType.slice(1), inline: true })
       .setImage(bottomImage)
@@ -131,6 +131,3 @@ module.exports = {
     }
   },
 };
-
-
-
