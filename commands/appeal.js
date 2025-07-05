@@ -1,71 +1,48 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, Events } = require('discord.js');
+const { MessageEmbed } = require('discord.js');
 
 module.exports = {
   name: 'appeal',
-  description: 'Start a ban appeal form',
+  description: 'Submit a ban appeal',
   async execute(message) {
-    const modal = new ModalBuilder()
-      .setCustomId('ban_appeal_modal')
-      .setTitle('Ban Appeal Form');
+    if (message.author.bot) return;
 
-    const whyBannedInput = new TextInputBuilder()
-      .setCustomId('why_banned')
-      .setLabel('Why were you banned?')
-      .setStyle(TextInputStyle.Paragraph)
-      .setRequired(true)
-      .setMaxLength(1000);
+    try {
+      await message.reply('Please answer the following questions within 5 minutes. Reply with your **roblox username**:');
 
-    const whyUnbannedInput = new TextInputBuilder()
-      .setCustomId('why_unbanned')
-      .setLabel('Why should you be unbanned? (5+ sentences required)')
-      .setStyle(TextInputStyle.Paragraph)
-      .setRequired(true)
-      .setMaxLength(2000);
+      const filter = m => m.author.id === message.author.id;
+      const collectedUsername = await message.channel.awaitMessages({ filter, max: 1, time: 300000, errors: ['time'] });
+      const robloxUsername = collectedUsername.first().content;
 
-    const firstRow = new ActionRowBuilder().addComponents(whyBannedInput);
-    const secondRow = new ActionRowBuilder().addComponents(whyUnbannedInput);
+      await message.reply('Why were you banned? Please answer in 5 or more sentences:');
+      const collectedBanReason = await message.channel.awaitMessages({ filter, max: 1, time: 300000, errors: ['time'] });
+      const banReason = collectedBanReason.first().content;
 
-    modal.addComponents(firstRow, secondRow);
+      await message.reply('Why should you be unbanned? Please answer in 5 or more sentences:');
+      const collectedUnbanReason = await message.channel.awaitMessages({ filter, max: 1, time: 300000, errors: ['time'] });
+      const unbanReason = collectedUnbanReason.first().content;
 
-    await message.channel.send(`${message.author}, please check your Discord app for the appeal form!`);
-    await message.author.send({ content: 'Click the button below to start your appeal:' }).then(dm => {
-      dm.channel.send({ components: [] });
-    }).catch(() => {
-      message.reply('❗ I couldn\'t send you a DM. Please check your privacy settings.');
-    });
-
-    await message.author.send({ content: 'Please fill out this appeal form:', components: [] }).then(async dm => {
-      await dm.showModal(modal).catch(console.error);
-    });
-  },
-
-  async setup(client) {
-    client.on(Events.InteractionCreate, async (interaction) => {
-      if (!interaction.isModalSubmit()) return;
-      if (interaction.customId !== 'ban_appeal_modal') return;
-
-      const whyBanned = interaction.fields.getTextInputValue('why_banned');
-      const whyUnbanned = interaction.fields.getTextInputValue('why_unbanned');
-
-      const embed = new EmbedBuilder()
-        .setTitle('📝 Ban Appeal Submitted')
-        .setDescription(`A user has submitted a ban appeal:`)
+      const appealEmbed = new MessageEmbed()
+        .setTitle('Ban Appeal')
+        .setColor('RED')
+        .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
         .addFields(
-          { name: 'User', value: `${interaction.user.tag} (${interaction.user.id})` },
-          { name: 'Why were you banned?', value: whyBanned },
-          { name: 'Why should you be unbanned?', value: whyUnbanned }
+          { name: 'User', value: `<@${message.author.id}>` },
+          { name: 'Roblox Username', value: robloxUsername },
+          { name: 'Why were you banned?', value: banReason },
+          { name: 'Why should you be unbanned?', value: unbanReason }
         )
-        .setColor(0xB00000)
         .setTimestamp();
 
-      const reviewChannelId = '1390957675311009902'; // Replace with the channel ID where staff reviews appeals
-      const reviewChannel = await interaction.client.channels.fetch(reviewChannelId);
-      if (!reviewChannel) {
-        return interaction.reply({ content: '⚠️ Failed to find the review channel.', ephemeral: true });
-      }
+      const appealsChannel = message.guild.channels.cache.get('1390957675311009902');
+      if (!appealsChannel) return message.reply('Appeals channel not found. Please contact an admin.');
 
-      await reviewChannel.send({ embeds: [embed] });
-      await interaction.reply({ content: '✅ Your appeal has been submitted. Staff will review it soon.', ephemeral: true });
-    });
-  }
+      await appealsChannel.send({ embeds: [appealEmbed] });
+      await message.reply('Your appeal has been submitted. Staff will review it and get back to you.');
+    } catch (err) {
+      console.log(err);
+      await message.reply('You did not reply in time. Appeal cancelled.');
+    }
+  },
 };
+
+
