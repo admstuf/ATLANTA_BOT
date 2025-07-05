@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Start an Express server so Render keeps our app alive
+// Keep app alive on your host
 app.get('/', (req, res) => {
   res.send('Bot is alive!');
 });
@@ -26,7 +26,7 @@ const client = new Client({
   ],
 });
 
-// Global error handler to catch unhandled promise rejections
+// Global error handler
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error);
 });
@@ -73,6 +73,13 @@ client.on('messageCreate', async (message) => {
     message.reply('There was an error executing that command.');
   }
 });
+
+// Call the setup method for commands that define it
+for (const command of client.commands.values()) {
+  if (typeof command.setup === 'function') {
+    command.setup(client);
+  }
+}
 
 client.login(process.env.DISCORD_BOT_TOKEN);
 
