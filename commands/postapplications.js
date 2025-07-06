@@ -5,7 +5,7 @@ module.exports = {
   description: 'Posts the application info with buttons for applying.',
   async execute(message, args) {
     const embed = new EmbedBuilder()
-      .setColor('#0099ff')
+      .setColor('#B22222') // changed from blue to dark red like tickets
       .setTitle('Welcome to Atlanta Roleplay!')
       .setThumbnail('https://cdn.discordapp.com/attachments/1385162246707220551/1390213797897179218/IMG_5237-removebg-preview.png')
       .setDescription(
@@ -63,5 +63,6 @@ module.exports = {
     }
   },
 };
+
 
 

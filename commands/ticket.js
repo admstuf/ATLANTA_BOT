@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle('**Atlanta Roleplay Support**')
       .setDescription(
-        'If you wish to report a member or a staff, need to partner with our server, apply for our media team, or have a general question, this is the place to do it! Please select a category where it says "Select Category" and click the ticket you want to open. Opening false tickets can result in a warning.\n\n'
+        'If you wish to report a member or a staff, need to partner with our server, apply for our media team, or have a general question, this is the place to do it! Please select a category below. Opening false tickets can result in a warning.\n\n'
         + '─────────────────────────────\n\n'
         + '**❓ | General Support**: Open a general support ticket if you have a general question about the server, the game, or anything else! (You can use this to get help from HR without pinging them in general).\n\n'
         + '**🤝 | Partnership**: Open this ticket if you are interested in partnering with our server! Make sure you have **at least 50 members**. You can also open this ticket if you have a question about your partnership.\n\n'
@@ -24,27 +24,22 @@ module.exports = {
         + 'Please do not ping HR in general or in any channels to ask questions, but please open these tickets. Not doing so may result in a warning, or a kick depending on severity. Have a great day!'
       )
       .setColor('#B22222')
-      .setThumbnail('https://cdn.discordapp.com/icons/1373057856571441152/6c0b987aaf2152ce0f99b87e1488d532.webp?size=1024');
+      .setThumbnail('https://cdn.discordapp.com/attachments/1385162246707220551/1390952762212352071/IMG_5237-removebg-preview.png?ex=686ac9f5&is=68697875&hm=e7ce0f1548d14718e4f78dc8cbd3fe1dbc9205e479427e5b59a6498c7572bec1&');
 
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('ticket_category_select')
-      .setPlaceholder('Select a Category')
-      .addOptions(
-        new StringSelectMenuOptionBuilder().setLabel('❓ General Support').setValue('ticket_general'),
-        new StringSelectMenuOptionBuilder().setLabel('🤝 Partnership').setValue('ticket_partnership'),
-        new StringSelectMenuOptionBuilder().setLabel('⚠️ Management Support').setValue('ticket_management'),
-        new StringSelectMenuOptionBuilder().setLabel('🎮 In-game Support').setValue('ticket_ingame'),
-        new StringSelectMenuOptionBuilder().setLabel('📷 Media Application').setValue('ticket_media'),
-      );
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ticket_general').setLabel('❓ General Support').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_partnership').setLabel('🤝 Partnership').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_management').setLabel('⚠️ Management Support').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_ingame').setLabel('🎮 In-game Support').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_media').setLabel('📷 Media Application').setStyle(ButtonStyle.Primary)
+    );
 
     await message.channel.send({ embeds: [embed], components: [row] });
   },
 
   async setup(client) {
     client.on('interactionCreate', async interaction => {
-      if (!interaction.isStringSelectMenu()) return;
+      if (!interaction.isButton()) return;
 
       const categoryMap = {
         ticket_general: 'general',
@@ -54,7 +49,7 @@ module.exports = {
         ticket_media: 'media'
       };
 
-      const category = categoryMap[interaction.values[0]];
+      const category = categoryMap[interaction.customId];
       if (!category) return;
 
       const categoryId = '1380177235499286638';
@@ -103,47 +98,9 @@ module.exports = {
       await channel.send({ content: `<@${user.id}>`, embeds: [ticketEmbed] });
       await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
     });
-
-    client.on('interactionCreate', async interaction => {
-      if (!interaction.isModalSubmit()) return;
-      if (interaction.customId !== 'close_ticket_modal') return;
-
-      const reason = interaction.fields.getTextInputValue('close_reason');
-      const channel = interaction.channel;
-      const messages = await channel.messages.fetch({ limit: 100 });
-      const ticketUser = channel.permissionOverwrites.cache.find(po => po.type === 1)?.id;
-      const transcriptChannelId = '1391251472515207219';
-
-      const transcriptEmbed = new EmbedBuilder()
-        .setTitle(`📑 Transcript for ${channel.name}`)
-        .setDescription(messages
-          .filter(m => !m.author.bot)
-          .map(m => `**${m.author.tag}**: ${m.content || '[Attachment]'}\n`)
-          .reverse()
-          .join('\n') || 'No messages.')
-        .setColor('#B22222')
-        .setTimestamp();
-
-      const closeEmbed = new EmbedBuilder()
-        .setTitle('🎫 Ticket Closed')
-        .setDescription(`Ticket closed by ${interaction.user}\n**Reason:** ${reason}`)
-        .setColor('#B22222')
-        .setTimestamp();
-
-      const transcriptChannel = interaction.guild.channels.cache.get(transcriptChannelId);
-      if (transcriptChannel) {
-        await transcriptChannel.send({ embeds: [transcriptEmbed] });
-      }
-      if (ticketUser) {
-        const member = await interaction.guild.members.fetch(ticketUser).catch(() => null);
-        if (member) await member.send({ embeds: [closeEmbed, transcriptEmbed] }).catch(() => {});
-      }
-
-      await interaction.reply({ content: 'Ticket has been closed and transcript sent.', ephemeral: true });
-      await channel.delete().catch(() => {});
-    });
   },
 };
+
 
 
 
