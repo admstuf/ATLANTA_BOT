@@ -1,10 +1,11 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, Events } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const fs = require('fs');
 
 module.exports = {
   name: 'ticket',
   description: 'Open the ticket panel',
   async execute(message) {
-    const allowedRoleId = '1387493566225322114';
+    const allowedRoleId = '1387493566225322114'; // role allowed to run !ticket
     if (!message.member.roles.cache.has(allowedRoleId)) {
       const reply = await message.reply('🚫 You do not have permission to use this command.');
       return setTimeout(() => reply.delete().catch(() => {}), 8000);
@@ -14,70 +15,76 @@ module.exports = {
       .setTitle('🎫 Open a Ticket')
       .setDescription(
         `Open any of the tickets below and we will help you solve the issue you are having! If you are reporting a staff member, evidence is required. Choose the category below that fits your inquiry.\n\n`
-        + '❓ | **General Support**\n🤝 | **Partnership**\n⚠️ | **Management Support**\n🎮 | **In-game Support**\n📷 | **Media Application**'
+        + `❓ | **General Support**: For general questions. Open this if no other category fits your topic!\n\n`
+        + `🤝 | **Partnership**: Open this ticket if you are interested in partnering with our server!\n\n`
+        + `⚠️ | **Management Support**: Open this ticket if you are reporting a staff member.\n\n`
+        + `🎮 | **In-game Support**: To report a player in-game, used for mod scenes.\n\n`
+        + `📷 | **Media Application**: Open this ticket to apply for Atlanta Media Team!`
       )
       .setColor('#B22222');
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket_general').setLabel('General Support').setEmoji('❓').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ticket_partnership').setLabel('Partnership').setEmoji('🤝').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ticket_management').setLabel('Management Support').setEmoji('⚠️').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ticket_ingame').setLabel('In-game Support').setEmoji('🎮').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ticket_media').setLabel('Media Application').setEmoji('📷').setStyle(ButtonStyle.Primary),
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ticket_general').setLabel('❓ General').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_partnership').setLabel('🤝 Partnership').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_management').setLabel('⚠️ Management').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_ingame').setLabel('🎮 In-game').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('ticket_media').setLabel('📷 Media').setStyle(ButtonStyle.Primary)
     );
 
-    await message.channel.send({ embeds: [embed], components: [row] });
+    await message.channel.send({ embeds: [embed], components: [buttons] });
   },
 
   async setup(client) {
-    client.on(Events.InteractionCreate, async (interaction) => {
+    client.on('interactionCreate', async interaction => {
       if (!interaction.isButton()) return;
-      if (!interaction.customId.startsWith('ticket_')) return;
 
-      const category = interaction.customId.split('_')[1];
-      const guild = interaction.guild;
+      const categoryMap = {
+        ticket_general: 'general',
+        ticket_partnership: 'partnership',
+        ticket_management: 'management',
+        ticket_ingame: 'ingame',
+        ticket_media: 'media'
+      };
+
+      const category = categoryMap[interaction.customId];
+      if (!category) return;
+
+      const categoryId = '1380177235499286638'; // new tickets category
       const user = interaction.user;
-      const categoryId = '1380177235499286638';
 
       const roleMap = {
-        ingame: '1379853523986022510',
-        management: '1379809709871071352',
         general: '1390942686026010645',
         partnership: '1379809709871071352',
+        management: '1379809709871071352',
+        ingame: '1379853523986022510',
         media: '1390951563366895647',
       };
+
       const allowedRole = roleMap[category];
       const channelName = `ticket-${category}-${user.username}`.toLowerCase();
 
-      const channel = await guild.channels.create({
+      const channel = await interaction.guild.channels.create({
         name: channelName,
-        type: ChannelType.GuildText,
+        type: 0,
         parent: categoryId,
         permissionOverwrites: [
-          { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-          { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-          { id: allowedRole, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+          { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
+          { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+          { id: allowedRole, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
         ],
       });
 
-      let ticketEmbed;
+      let ticketMessage;
       if (category === 'media') {
-        ticketEmbed = new EmbedBuilder()
-          .setTitle('📷 Media Team Application')
-          .setDescription(
-            `Roblox username:\n\n`
-            + `Age:\n\n`
-            + `Why do you want to apply?\n\n`
-            + `How active will you be if you’re accepted?\n\n`
-            + `Please showcase your previous work below. (Preferably ERLC Roleplay scenes. 2-5 pictures.)`
-          )
-          .setColor('#B22222');
+        ticketMessage = 'Roblox username:\n\nAge:\n\nWhy do you want to apply?\n\nHow active will you be if you’re accepted?\n\nPlease showcase your previous work below. (Preferably ERLC Roleplay scenes. 2-5 pictures.)';
       } else {
-        ticketEmbed = new EmbedBuilder()
-          .setTitle(`🎫 Ticket: ${category.charAt(0).toUpperCase() + category.slice(1)}`)
-          .setDescription(`Hello <@${user.id}>, thank you for opening a **${category}** ticket. Please explain your issue or request below.`)
-          .setColor('#B22222');
+        ticketMessage = `Hello <@${user.id}>, thank you for opening a **${category}** ticket. Please explain your issue or request below.`;
       }
+
+      const ticketEmbed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket: ${category.charAt(0).toUpperCase() + category.slice(1)}`)
+        .setDescription(ticketMessage)
+        .setColor('#B22222');
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Close Ticket').setStyle(ButtonStyle.Danger),
@@ -88,63 +95,67 @@ module.exports = {
       await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
     });
 
-    client.on(Events.InteractionCreate, async (interaction) => {
+    client.on('interactionCreate', async interaction => {
       if (!interaction.isButton()) return;
 
       const { customId, channel, user } = interaction;
-      const ticketOwnerId = channel.permissionOverwrites.cache.find(po => po.type === 1 && po.allow.has(PermissionFlagsBits.ViewChannel))?.id;
-
       if (customId === 'close_ticket') {
-        await interaction.reply({
-          content: 'Please reply in this channel with your reason for closing the ticket. You have 60 seconds:',
-          ephemeral: true,
-        });
-
-        const filter = m => m.author.id === user.id;
-        const collector = channel.createMessageCollector({ filter, max: 1, time: 60000 });
-
-        collector.on('collect', async m => {
-          const fetchedMessages = await channel.messages.fetch({ limit: 100 });
-          const transcriptLines = fetchedMessages
-            .filter(msg => !msg.author.bot)
-            .map(msg => `[${msg.createdAt.toLocaleString()}] ${msg.author.tag}: ${msg.content}`)
-            .reverse();
-
-          const transcript = `**Transcript for ${channel.name}**\n**Closed by:** ${user.tag}\n**Reason:** ${m.content}\n\n${transcriptLines.join('\n')}`;
-
-          const transcriptChannel = interaction.guild.channels.cache.get('1391251472515207219');
-          if (transcriptChannel) {
-            await transcriptChannel.send({ content: transcript.slice(0, 2000) });
-          }
-
-          const ticketOwner = await interaction.guild.members.fetch(ticketOwnerId).catch(() => null);
-          if (ticketOwner) {
-            await ticketOwner.send({ content: transcript.slice(0, 2000) }).catch(() => {});
-          }
-
-          await channel.send('🔒 This ticket has been closed. Thank you for contacting us.');
-          await channel.delete().catch(() => {});
-        });
-
-        collector.on('end', collected => {
-          if (collected.size === 0) interaction.followUp({ content: '⏰ You did not provide a reason in time.', ephemeral: true });
-        });
+        const modal = new ModalBuilder()
+          .setCustomId('close_ticket_modal')
+          .setTitle('Close Ticket')
+          .addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('close_reason')
+                .setLabel('Reason for closing')
+                .setStyle(TextInputStyle.Paragraph)
+                .setRequired(true)
+            )
+          );
+        return interaction.showModal(modal);
       }
 
       if (customId === 'claim_ticket') {
-        const allowedRoleIds = Object.values({
-          ingame: '1379853523986022510',
-          management: '1379809709871071352',
-          general: '1390942686026010645',
-          partnership: '1379809709871071352',
-          media: '1390951563366895647',
-        });
-        const hasRole = allowedRoleIds.some(roleId => interaction.member.roles.cache.has(roleId));
-        if (!hasRole) return interaction.reply({ content: '🚫 You do not have permission to claim this ticket.', ephemeral: true });
-
-        await channel.send(`🛡️ Ticket claimed by ${interaction.user}. <@${ticketOwnerId}>`);
-        await interaction.reply({ content: '✅ You have claimed this ticket.', ephemeral: true });
+        await channel.send(`🛡️ Ticket claimed by ${interaction.user}. <@${channel.permissionOverwrites.cache.find(po => po.type === 1)?.id}>`);
+        return interaction.reply({ content: '✅ You have claimed this ticket.', ephemeral: true });
       }
+    });
+
+    client.on('interactionCreate', async interaction => {
+      if (!interaction.isModalSubmit()) return;
+      if (interaction.customId !== 'close_ticket_modal') return;
+
+      const reason = interaction.fields.getTextInputValue('close_reason');
+      const channel = interaction.channel;
+      const messages = await channel.messages.fetch({ limit: 100 });
+      const ticketUser = channel.permissionOverwrites.cache.find(po => po.type === 1)?.id;
+      const transcriptChannelId = '1391251472515207219';
+
+      const transcript = messages
+        .filter(m => !m.author.bot)
+        .map(m => `[${new Date(m.createdTimestamp).toLocaleString()}] ${m.author.tag}: ${m.content}`)
+        .reverse()
+        .join('\n');
+
+      const codeBlockTranscript = `\`\`\`\n${transcript}\n\`\`\``;
+
+      const closeEmbed = new EmbedBuilder()
+        .setTitle('🎫 Ticket Closed')
+        .setDescription(`Ticket closed by ${interaction.user}\n**Reason:** ${reason}`)
+        .setColor('#B22222')
+        .setTimestamp();
+
+      const transcriptChannel = interaction.guild.channels.cache.get(transcriptChannelId);
+      if (transcriptChannel) {
+        await transcriptChannel.send({ content: `Transcript for ${channel.name}:\n${codeBlockTranscript}` });
+      }
+      if (ticketUser) {
+        const member = await interaction.guild.members.fetch(ticketUser).catch(() => null);
+        if (member) await member.send({ embeds: [closeEmbed], content: `Transcript of your ticket:\n${codeBlockTranscript}` }).catch(() => {});
+      }
+
+      await interaction.reply({ content: 'Ticket has been closed and transcript sent.', ephemeral: true });
+      await channel.delete().catch(() => {});
     });
   },
 };
