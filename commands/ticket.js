@@ -5,7 +5,7 @@ const {
   StringSelectMenuBuilder,
   ButtonStyle,
   PermissionsBitField,
-  ChannelType,
+  ChannelType
 } = require('discord.js');
 const moment = require('moment');
 
@@ -19,14 +19,13 @@ module.exports = {
       .setThumbnail('https://cdn.discordapp.com/attachments/1385162246707220551/1390952762212352071/IMG_5237-removebg-preview.png')
       .setDescription(
         "**Atlanta Roleplay Support**\n" +
-        "If you wish to report a member or a staff, need to partner with our server, apply for our media team, or have a general question, this is the place to do it! Please select a category where it says 'Select a Category' and click the ticket you want to open. Opening false tickets can result in a warning.\n\n" +
+        "If you wish to report a member or staff, need to partner with our server, apply for our media team, or have a general question, this is the place to do it! Please select a category below. Opening false tickets can result in a warning.\n\n" +
         "-----------------------------------\n\n" +
-        "**❓ | General Support**: Open a general support ticket if you have a general question about the server, the game, or anything else! (You can use this to get help from HR without pinging them in general).\n\n" +
-        "**🤝 | Partnership**: Open this ticket if you are interested in partnering with our server! Make sure you have **at least 50 members**. You can also open this ticket if you have a question about your partnership.\n\n" +
-        "**⚠️ | Management Support**: Open this ticket if you are reporting an Atlanta Roleplay staff member. You can also open this ticket to get support from management (only for major questions, if not a major question, please open a general support ticket).\n\n" +
-        "**🎮 | In-game Support**: To report an in-game player. Usually used for mod scenes! **Make sure to upload clips with Medal, Streamable, or Youtube links.** Not doing so will result in your report being denied by staff members.\n\n" +
-        "**📷 | Media Application**: Open this ticket to apply for Atlanta Media Team! Make sure you have at least 2-5 pictures of high quality and edited. Make sure your pictures aren't heavily supported by shaders or other applications. Make sure your 13+ and are not banned in-game or have a large punishment history.\n\n" +
-        "Please do not ping HR in general or in any channels to ask questions, but please open these tickets. Not doing so may result in a warning, or a kick depending on severity. Have a great day!"
+        "**❓ | General Support**: Open a ticket for questions about the server or game.\n" +
+        "**🤝 | Partnership**: Open a ticket to partner with us (min. 50 members).\n" +
+        "**⚠️ | Management Support**: Report staff or get management support.\n" +
+        "**🎮 | In-game Support**: Report an in-game player (upload clips from Medal/Streamable/Youtube).\n" +
+        "**📷 | Media Application**: Apply for the Atlanta Media Team (2-5 high-quality pics required)."
       );
 
     const select = new StringSelectMenuBuilder()
@@ -53,11 +52,10 @@ module.exports = {
   async setup(client) {
     client.on('interactionCreate', async interaction => {
       if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_category') {
-        const categoryId = '1380177235499286638'; // your tickets category ID
-        const modRoleId = '1379809709871071352'; // your staff role ID
+        const categoryId = '1380177235499286638'; // tickets category
+        const modRoleId = '1379809709871071352'; // staff role
         const user = interaction.user;
         const selected = interaction.values[0];
-
         const ticketName = `ticket-${selected}-${user.username}`.toLowerCase();
 
         const channel = await interaction.guild.channels.create({
@@ -82,7 +80,7 @@ module.exports = {
             ticketMessage = `Hello <@${user.id}>👋, thank you for opening a partnership ticket! A HR member will be with you shortly. Please fill out this format:\nServer Name:\nServer Owner:\nMembers without bots:\nServer link: (not ad)`;
             break;
           case 'management':
-            ticketMessage = `Hello <@${user.id}>👋, thank you for opening a management support ticket. Please send the user of the staff member you are reporting and your form of proof. If you have another question, send it here.`;
+            ticketMessage = `Hello <@${user.id}>👋, thank you for opening a management support ticket. Please send the user of the staff member you are reporting and your form of proof.`;
             break;
           case 'ingame':
             ticketMessage = `Hello <@${user.id}>👋, thank you for opening an in-game support ticket. Make sure to upload clips with Medal, Streamable, or Youtube links. Not doing so will result in your report being denied by staff members.`;
@@ -115,12 +113,10 @@ module.exports = {
         await channel.send({ embeds: [embed], components: [buttonRow] });
       }
 
-      // Claim ticket handler
       if (interaction.isButton() && interaction.customId === 'claim_ticket') {
         await interaction.update({ content: `✅ Ticket claimed by <@${interaction.user.id}>.`, components: [] });
       }
 
-      // Close ticket handler
       if (interaction.isButton() && interaction.customId === 'close_ticket') {
         const channel = interaction.channel;
         const messages = await channel.messages.fetch({ limit: 100 });
@@ -148,6 +144,7 @@ module.exports = {
     });
   }
 };
+
 
 
 
