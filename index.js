@@ -120,10 +120,13 @@ client.on('guildMemberAdd', async member => {
         }
 
         const memberCount = member.guild.memberCount;
-        const emoji = '<a:wave:1263966302289133729>'; // Animated wave emoji URL, Discord renders it as a custom emoji if available
-        // Fallback for emoji if the URL doesn't work or is not desired: const emoji = '👋';
+        const waveEmoji = '<a:wave:1263966302289133729>'; // Animated wave emoji URL
+        const endEmoji = '<a:atlanta_rp_logo:1390806273619918990>'; // New emoji URL
+        // Fallback for wave emoji if the URL doesn't work or is not desired: const waveEmoji = '👋';
 
-        const welcomeMessage = `> ${emoji} **Welcome ${member.user.tag} to Atlanta Roleplay! We now have ${memberCount} members.**`;
+        // Changed member.user.tag to member.toString() to ping the user
+        // Added backticks for the member count to create a gray box, and the new emoji at the end
+        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! We now have \`${memberCount}\` members.** ${endEmoji}`;
 
         await welcomeChannel.send(welcomeMessage);
         console.log(`[WELCOME MESSAGE SUCCESS] Sent welcome message for ${member.user.tag} to channel "${welcomeChannel.name}".`);
