@@ -56,7 +56,9 @@ module.exports = {
         const modRoleId = '1379809709871071352';
         const user = interaction.user;
         const selected = interaction.values[0];
-        const ticketName = `ticket-${selected}-${user.username}`.toLowerCase();
+        // sanitize username for channel name (discord channel name rules)
+        const sanitizedUsername = user.username.toLowerCase().replace(/[^a-z0-9\-]/g, '-').slice(0, 20);
+        const ticketName = `ticket-${selected}-${sanitizedUsername}`;
 
         try {
           const channel = await interaction.guild.channels.create({
@@ -134,24 +136,20 @@ module.exports = {
           const transcriptEmbed = new EmbedBuilder()
             .setTitle(`Transcript - ${channel.name}`)
             .setColor('#B22222')
-            .setDescription(messages
-              .reverse()
-              .map(m => `[${moment(m.createdAt).format('M/D/YYYY, h:mm:ss A')}] ${m.author.tag}: ${m.content}`)
-              .join('\n').slice(0, 4000) || 'No messages recorded.')
+            .setDescription(
+              messages
+                .reverse()
+                .map(m => `[${moment(m.createdAt).format('M/D/YYYY, h:mm:ss A')}] ${m.author.tag}: ${m.content}`)
+                .join('\n')
+                .slice(0, 4000) || 'No messages recorded.'
+            )
             .setTimestamp();
 
           const transcriptChannel = interaction.guild.channels.cache.get('1391251472515207219');
           if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
 
-          const starter = channel.permissionOverwrites.cache.find(perm => perm.type === 1);
-          if (starter) {
-            try {
-              const starterUser = await interaction.guild.members.fetch(starter.id);
-              await starterUser.send({ embeds: [transcriptEmbed] });
-            } catch (err) {
-              console.error('Could not send transcript DM:', err);
-            }
-          }
+          // removed invalid permissionOverwrites.cache.find for starter user
+          // alternative: send transcript to ticket opener user stored in channel topic or similar (not implemented here)
 
           await interaction.update({ content: 'Ticket closed and transcript sent.', embeds: [], components: [] });
           setTimeout(async () => {
