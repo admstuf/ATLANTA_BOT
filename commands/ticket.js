@@ -5,15 +5,14 @@ const {
   StringSelectMenuBuilder,
   ButtonStyle,
   PermissionsBitField,
-  AttachmentBuilder
+  ChannelType,
 } = require('discord.js');
-const fs = require('fs');
 const moment = require('moment');
 
 module.exports = {
   name: 'ticket',
   description: 'Post the support ticket panel.',
-  async execute(message, args) {
+  async execute(message) {
     const embed = new EmbedBuilder()
       .setColor('#B22222')
       .setTitle('Atlanta Roleplay Support')
@@ -54,8 +53,8 @@ module.exports = {
   async setup(client) {
     client.on('interactionCreate', async interaction => {
       if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_category') {
-        const categoryId = '1380177235499286638'; // category to create tickets in
-        const modRoleId = '1379809709871071352'; // staff role for permissions
+        const categoryId = '1380177235499286638'; // your tickets category ID
+        const modRoleId = '1379809709871071352'; // your staff role ID
         const user = interaction.user;
         const selected = interaction.values[0];
 
@@ -63,7 +62,7 @@ module.exports = {
 
         const channel = await interaction.guild.channels.create({
           name: ticketName,
-          type: 'GUILD_TEXT', // FIXED: use string instead of ChannelType.GuildText for compatibility
+          type: ChannelType.GuildText,
           parent: categoryId,
           permissionOverwrites: [
             { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -72,7 +71,7 @@ module.exports = {
           ],
         });
 
-        await interaction.reply({ content: `Your ticket has been created: ${channel}`, ephemeral: true });
+        await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
 
         let ticketMessage;
         switch (selected) {
@@ -116,12 +115,12 @@ module.exports = {
         await channel.send({ embeds: [embed], components: [buttonRow] });
       }
 
-      // Claim button
+      // Claim ticket handler
       if (interaction.isButton() && interaction.customId === 'claim_ticket') {
         await interaction.update({ content: `✅ Ticket claimed by <@${interaction.user.id}>.`, components: [] });
       }
 
-      // Close button
+      // Close ticket handler
       if (interaction.isButton() && interaction.customId === 'close_ticket') {
         const channel = interaction.channel;
         const messages = await channel.messages.fetch({ limit: 100 });
