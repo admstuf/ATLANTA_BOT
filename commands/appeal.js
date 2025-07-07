@@ -126,6 +126,9 @@ module.exports = {
             if (interaction.isModalSubmit()) {
                 // Check if the submitted modal is the "Ban Appeal Form"
                 if (interaction.customId === 'appeal_submission_modal') {
+                    // ⭐ Defer the reply immediately to prevent "interaction failed" ⭐
+                    await interaction.deferReply({ ephemeral: true });
+
                     // Retrieve the input values from the modal
                     const robloxUsername = interaction.fields.getTextInputValue('robloxUsernameInput');
                     const banReason = interaction.fields.getTextInputValue('banReasonInput');
@@ -138,15 +141,15 @@ module.exports = {
                     const modChannel = guild.channels.cache.get(modChannelId);
 
                     if (!modChannel) {
-                        await interaction.reply({ content: '❌ Error: Mod appeal log channel not found. Please contact staff.', ephemeral: true });
                         console.error(`[APPEAL MODAL ERROR] Mod appeal log channel with ID ${modChannelId} not found.`);
+                        await interaction.editReply({ content: '❌ Error: Mod appeal log channel not found. Please contact staff.', ephemeral: true });
                         return;
                     }
 
                     // Check if the bot has permission to send messages in the mod log channel
                     if (!modChannel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.SendMessages)) {
-                        await interaction.reply({ content: '❌ Error: Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.', ephemeral: true });
-                        console.error(`[APPEAL MODAL ERROR] Bot does not have 'Send Messages' permission in mod appeal log channel "${modChannel.name}" (${modChannelId}).`);
+                        console.error(`[APPEAL MODAL ERROR] Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.`, ephemeral: true);
+                        await interaction.editReply({ content: '❌ Error: Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.', ephemeral: true });
                         return;
                     }
 
@@ -178,18 +181,17 @@ module.exports = {
                     // Send the appeal embed and buttons to the mod log channel
                     try {
                         await modChannel.send({ embeds: [appealEmbed], components: [row] });
-                        // Reply to the user who submitted the modal (ephemeral so only they see it)
-                        await interaction.reply({ content: '✅ Your ban appeal has been successfully submitted to the HR team!', ephemeral: true });
+                        // Edit the deferred reply to confirm submission
+                        await interaction.editReply({ content: '✅ Your ban appeal has been successfully submitted to the HR team!', ephemeral: true });
                         console.log(`[APPEAL MODAL SUCCESS] Appeal submitted by ${user.tag}.`);
                     } catch (error) {
                         console.error('Failed to send appeal embed to mod channel:', error);
-                        await interaction.reply({ content: '❌ There was an error submitting your appeal. Please try again later.', ephemeral: true });
+                        await interaction.editReply({ content: '❌ There was an error submitting your appeal. Please try again later.', ephemeral: true });
                     }
                 }
             }
         });
     }
 };
-
 
 

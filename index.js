@@ -3,6 +3,13 @@ const express = require('express');
 const { Client, GatewayIntentBits, Collection, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v10');
+
+// Firebase Imports
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, addDoc, getDocs, query, where } = require('firebase/firestore');
+const { getAuth, signInWithCustomToken, signInAnonymously } = require('firebase/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +43,46 @@ if (process.env.DISCORD_BOT_TOKEN) {
     process.exit(1); // Exit if the token is missing early
 }
 
+// ⭐⭐⭐ FIREBASE INITIALIZATION START ⭐⭐⭐
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+let firebaseApp;
+let db;
+let auth;
+
+try {
+    firebaseApp = initializeApp(firebaseConfig);
+    db = getFirestore(firebaseApp);
+    auth = getAuth(firebaseApp);
+    console.log('Firebase initialized successfully.');
+
+    // Sign in to Firebase Auth
+    (async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined') {
+                await signInWithCustomToken(auth, __initial_auth_token);
+                console.log('Firebase signed in with custom token.');
+            } else {
+                await signInAnonymously(auth);
+                console.log('Firebase signed in anonymously.');
+            }
+        } catch (authError) {
+            console.error('Firebase Auth Error:', authError);
+        }
+    })();
+
+} catch (firebaseError) {
+    console.error('Failed to initialize Firebase:', firebaseError);
+    // Continue running the bot without Firestore if initialization fails, or exit if critical
+}
+
+// Make db and auth accessible to commands (e.g., via client object)
+client.db = db;
+client.auth = auth;
+client.appId = appId;
+// ⭐⭐⭐ FIREBASE INITIALIZATION END ⭐⭐⭐
+
 
 // Global error handler for unhandled promise rejections
 process.on('unhandledRejection', error => {
@@ -44,6 +91,7 @@ process.on('unhandledRejection', error => {
 
 // Load commands from commands folder
 client.commands = new Collection();
+const slashCommands = []; // Array to hold data for slash command registration
 
 const commandsPath = path.join(__dirname, 'commands');
 if (!fs.existsSync(commandsPath)) {
@@ -57,22 +105,47 @@ for (const file of commandFiles) {
     const command = require(filePath);
     if ('name' in command && 'execute' in command) {
         client.commands.set(command.name, command);
-        console.log(`Loaded command: ${command.name}`);
+        console.log(`Loaded prefix command: ${command.name}`);
     } else {
-        console.warn(`[WARNING] The command at ${filePath} is missing a required "name" or "execute" property.`);
+        console.warn(`[WARNING] The prefix command at ${filePath} is missing a required "name" or "execute" property.`);
+    }
+
+    // ⭐⭐⭐ Collect Slash Command Data ⭐⭐⭐
+    if ('data' in command && typeof command.data.toJSON === 'function') {
+        slashCommands.push(command.data.toJSON());
+        console.log(`Collected slash command data for: ${command.name}`);
+    }
+
+    if ('setup' in command) {
+        command.setup(client);
+        console.log(`Setup function initialized for command: ${command.name}`);
     }
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
+
+    // ⭐⭐⭐ REGISTER SLASH COMMANDS ⭐⭐⭐
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN);
+    try {
+        console.log(`Started refreshing ${slashCommands.length} application (/) commands.`);
+        // Registering commands globally (can take up to an hour to propagate)
+        // For testing, you might want to register per-guild:
+        // await rest.put(Routes.applicationGuildCommands(client.user.id, 'YOUR_GUILD_ID'), { body: slashCommands });
+        await rest.put(Routes.applicationCommands(client.user.id), { body: slashCommands });
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error('Failed to register slash commands:', error);
+    }
 });
 
-// Message command handler (for prefix commands like !ticket)
+// Message command handler (for prefix commands like !ticket, !appeal)
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return; // Ignore messages from bots
-    if (!message.content.startsWith('!')) return; // Ignore messages not starting with '!'
+    const prefix = '!'; // Define your prefix
+    if (!message.content.startsWith(prefix)) return; // Ignore messages not starting with '!'
 
-    const args = message.content.slice(1).trim().split(/ +/);
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase(); // Extract command name and convert to lowercase
 
     const command = client.commands.get(commandName); // Get the command from the collection
@@ -86,7 +159,32 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// ⭐⭐⭐ AUTO-ROLE AND WELCOME MESSAGE LOGIC STARTS HERE ⭐⭐⭐
+// ⭐⭐⭐ INTERACTION COMMAND HANDLER (FOR SLASH COMMANDS) ⭐⭐⭐
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return; // Only handle slash commands
+
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) {
+        console.error(`No command matching ${interaction.commandName} was found.`);
+        return;
+    }
+
+    try {
+        // Pass the interaction object to the command's execute method
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+        } else {
+            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        }
+    }
+});
+
+
+// ⭐⭐⭐ AUTO-ROLE AND WELCOME MESSAGE LOGIC ⭐⭐⭐
 client.on('guildMemberAdd', async member => {
     const autoRoleId = '1373743096659050536'; // The ID of the role you want to auto-assign on join
     const welcomeChannelId = '1390428167180648488'; // Welcome channel ID
@@ -131,8 +229,9 @@ client.on('guildMemberAdd', async member => {
         }
 
         const memberCount = member.guild.memberCount;
-        const waveEmoji = '<a:wave_animated:1263966302289133729>'; // Animated wave emoji
-        const endEmoji = '<a:arplogo:1390806273619918990>'; // Custom ARPLOGO emoji
+        // ⭐ Updated emoji IDs here ⭐
+        const waveEmoji = '<a:wave_animated:1391882992955297962>'; // Corrected animated wave emoji ID
+        const endEmoji = '<a:arplogo:1390806273619918990>'; // Corrected custom ARPLOGO emoji ID
 
         const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! We now have \`${memberCount}\` members.** ${endEmoji}`;
 
@@ -144,7 +243,7 @@ client.on('guildMemberAdd', async member => {
     }
 });
 
-// ⭐⭐⭐ ROLE REMOVAL LOGIC (on guildMemberUpdate) STARTS HERE ⭐⭐⭐
+// ⭐⭐⭐ ROLE REMOVAL LOGIC (on guildMemberUpdate) ⭐⭐⭐
 client.on('guildMemberUpdate', async (oldMember, newMember) => {
     const triggerRoleId = '1379847693286772891'; // The role that, when added, triggers the removal
     const roleToRemoveId = '1373743096659050536'; // The role to be removed automatically
@@ -186,7 +285,6 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
         }
     }
 });
-// ⭐⭐⭐ ROLE REMOVAL LOGIC ENDS HERE ⭐⭐⭐
 
 // Call the setup method for commands that define it (e.g., your ticket command's interaction listener)
 for (const command of client.commands.values()) {

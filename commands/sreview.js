@@ -1,4 +1,11 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, Events, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { collection, addDoc } = require('firebase/firestore'); // Import Firestore functions
+
+// Helper function to normalize names for consistent matching
+function normalizeName(name) {
+    if (!name) return '';
+    return name.toLowerCase().replace(/[^a-z0-9]/g, ''); // Convert to lowercase and remove non-alphanumeric characters
+}
 
 module.exports = {
     name: 'sreview', // The command name will be !sreview
@@ -132,6 +139,9 @@ module.exports = {
                     const rating = interaction.fields.getTextInputValue('ratingInput');
                     const reason = interaction.fields.getTextInputValue('reasonInput');
 
+                    // ⭐⭐⭐ Normalize the moderator name before saving ⭐⭐⭐
+                    const normalizedModeratorName = normalizeName(moderatorName);
+
                     const guild = interaction.guild;
                     const user = interaction.user; // The user who submitted the modal
 
@@ -149,6 +159,26 @@ module.exports = {
                         await interaction.reply({ content: '❌ Error: Bot does not have permission to send messages in the moderator review log channel. Please contact staff.', ephemeral: true });
                         console.error(`[REVIEW MODAL ERROR] Bot does not have 'Send Messages' permission in moderator review log channel "${modChannel.name}" (${modChannelId}).`);
                         return;
+                    }
+
+                    // ⭐⭐⭐ SAVE REVIEW TO FIRESTORE ⭐⭐⭐
+                    try {
+                        // Access client.db and client.appId which are set in index.js
+                        const reviewsCollectionRef = collection(client.db, `artifacts/${client.appId}/public/data/moderator_reviews`);
+                        await addDoc(reviewsCollectionRef, {
+                            guildId: guild.id,
+                            reviewerId: user.id,
+                            moderatorName: moderatorName, // Keep original name for display
+                            normalizedModeratorName: normalizedModeratorName, // Save normalized name for querying
+                            rating: rating,
+                            reason: reason,
+                            timestamp: new Date(), // Store current time
+                        });
+                        console.log(`[FIRESTORE SUCCESS] Moderator review saved for ${moderatorName}.`);
+                    } catch (firestoreError) {
+                        console.error(`[FIRESTORE ERROR] Failed to save moderator review to Firestore:`, firestoreError);
+                        await interaction.reply({ content: '❌ There was an error saving your review. Please try again later.', ephemeral: true });
+                        return; // Stop execution if saving fails
                     }
 
                     // Create the embed to send to the mod log channel
