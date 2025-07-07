@@ -148,7 +148,8 @@ module.exports = {
 
                     // Check if the bot has permission to send messages in the mod log channel
                     if (!modChannel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.SendMessages)) {
-                        console.error(`[APPEAL MODAL ERROR] Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.`, ephemeral: true);
+                        // Corrected console.error usage: removed ephemeral: true
+                        console.error(`[APPEAL MODAL ERROR] Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.`);
                         await interaction.editReply({ content: '❌ Error: Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.', ephemeral: true });
                         return;
                     }
@@ -193,5 +194,3 @@ module.exports = {
         });
     }
 };
-
-

@@ -47,6 +47,12 @@ if (process.env.DISCORD_BOT_TOKEN) {
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+// Add a default projectId if it's missing, to prevent Firebase initialization errors
+if (!firebaseConfig.projectId) {
+    console.warn('WARNING: "projectId" not found in firebaseConfig. Using "default-project" for initialization. Please ensure __firebase_config is correctly set.');
+    firebaseConfig.projectId = 'default-project'; // Provide a fallback projectId
+}
+
 let firebaseApp;
 let db;
 let auth;
@@ -111,6 +117,7 @@ for (const file of commandFiles) {
     }
 
     // ⭐⭐⭐ Collect Slash Command Data ⭐⭐⭐
+    // Only add slash command data if the command exports a 'data' property
     if ('data' in command && typeof command.data.toJSON === 'function') {
         slashCommands.push(command.data.toJSON());
         console.log(`Collected slash command data for: ${command.name}`);
@@ -229,7 +236,6 @@ client.on('guildMemberAdd', async member => {
         }
 
         const memberCount = member.guild.memberCount;
-        // ⭐ Updated emoji IDs here ⭐
         const waveEmoji = '<a:wave_animated:1391882992955297962>'; // Corrected animated wave emoji ID
         const endEmoji = '<a:arplogo:1390806273619918990>'; // Corrected custom ARPLOGO emoji ID
 
