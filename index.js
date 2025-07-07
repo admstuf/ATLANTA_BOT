@@ -26,6 +26,17 @@ const client = new Client({
     ],
 });
 
+// Explicitly set the token for the REST manager immediately
+// This helps ensure the REST client has the token even before client.login() fully resolves,
+// which can prevent "Expected token to be set" errors on early events like guildMemberAdd.
+if (process.env.DISCORD_BOT_TOKEN) {
+    client.rest.setToken(process.env.DISCORD_BOT_TOKEN);
+} else {
+    console.error('ERROR: DISCORD_BOT_TOKEN is not set in your .env file! Please ensure it is configured.');
+    process.exit(1); // Exit if the token is missing early
+}
+
+
 // Global error handler for unhandled promise rejections
 process.on('unhandledRejection', error => {
     console.error('Unhandled promise rejection:', error);
