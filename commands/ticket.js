@@ -129,9 +129,8 @@ module.exports = {
 
                 if (interaction.customId === 'claim_ticket') {
                     try {
-                        // Only send a new message in the ticket channel announcing the claim
                         await channel.send({ content: `✅ Ticket claimed by <@${interaction.user.id}>.` });
-                        // Do NOT call interaction.update() or interaction.editReply()
+                        await interaction.deferUpdate(); // Acknowledge the interaction, do not edit or reply
                     } catch (error) {
                         console.error('Error claiming ticket:', error);
                         await interaction.reply({ content: '❌ Failed to claim the ticket.', ephemeral: true });
