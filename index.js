@@ -78,7 +78,7 @@ client.on('messageCreate', async (message) => {
 // ⭐⭐⭐ AUTO-ROLE AND WELCOME MESSAGE LOGIC STARTS HERE ⭐⭐⭐
 client.on('guildMemberAdd', async member => {
     const autoRoleId = '1373743096659050536'; // The ID of the role you want to auto-assign
-    const welcomeChannelId = 'YOUR_WELCOME_CHANNEL_ID'; // <--- REPLACE WITH YOUR WELCOME CHANNEL ID
+    const welcomeChannelId = '1390428167180648488'; // Updated to the specified welcome channel ID
 
     // --- Auto-Role Logic ---
     try {
@@ -143,4 +143,3 @@ for (const command of client.commands.values()) {
 }
 
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
-
