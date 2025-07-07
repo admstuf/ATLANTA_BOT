@@ -92,7 +92,7 @@ module.exports = {
                             messageContent = `Hello <@${user.id}>👋, thank you for opening an in-game support ticket. Make sure to upload clips with Medal, Streamable, or Youtube links. Not doing so will result in your report being denied by staff members.`;
                             break;
                         case 'media':
-                            messageContent = `Roblox username:\n\nAge:\n\nWhy do you want to apply?\n\nHow active will you be if you’re accepted?\n\nPlease showcase your previous work below. (Preferably ERLC Roleplay scenes. 2-5 pictures.)`;
+                            messageContent = `Roblox username:\n\nAge:\n\nWhy do you want to apply?\n\nHow active will you be if you’re accepted?\n\nPlease show your previous work below. (ERLC Roleplay scenes, atleast 2-5 pictures.)`;
                             break;
                         default:
                             messageContent = `Hello <@${user.id}>, your ticket has been opened.`;
@@ -128,7 +128,10 @@ module.exports = {
 
                 if (interaction.customId === 'claim_ticket') {
                     try {
-                        await interaction.update({ content: `✅ Ticket claimed by <@${interaction.user.id}>.`, embeds: [], components: [] });
+                        // Send a new message in the ticket channel announcing the claim
+                        await channel.send({ content: `✅ Ticket claimed by <@${interaction.user.id}>.` });
+                        // Remove the buttons from the original welcome message
+                        await interaction.update({ components: [] });
                     } catch (error) {
                         console.error('Error claiming ticket:', error);
                         await interaction.reply({ content: '❌ Failed to claim the ticket.', ephemeral: true });
