@@ -13,11 +13,12 @@ module.exports = {
                 "**Atlanta Roleplay Support**\n" +
                 "If you wish to report a member or staff, need to partner with our server, apply for our media team, or have a general question, this is the place to do it! Please select a category below. Opening false tickets can result in a warning.\n\n" +
                 "-----------------------------------\n\n" +
-                "**❓ | General Support**: Open a general support ticket if you have a general question about the server, the game, or anything else! (You can use this to get help from HR without pinging them in general).\n" +
-                "**🤝 | Partnership**: Open this ticket if you are interested in partnering with our server! Make sure you have at least 50 members. You can also open this ticket if you have a question about your partnership.\n" +
-                "**⚠️ | Management Support**: Open this ticket if you are reporting an Atlanta Roleplay staff member. You can also open this ticket to get support from management (only for major questions, if not a major question, please open a general support ticket).\n" +
-                "**🎮 | In-game Support**: To report an in-game player. Usually used for mod scenes! Make sure to upload clips with Medal, Streamable, or Youtube links. Not doing so will result in your report being denied by staff members.\n" +
-                "**📷 | Media Application**: Open this ticket to apply for Atlanta Media Team! Make sure you have at least 2-5 pictures of high quality and edited. Make sure your pictures aren't heavily supported by shaders or other applications. Make sure your 13+ and are not banned in-game or have a large punishment history."
+                "**❓ | General Support**: Open a general support ticket if you have a general question about the server, the game, or anything else! (You can use this to get help from HR without pinging them in general).\n\n" +
+                "**🤝 | Partnership**: Open this ticket if you are interested in partnering with our server! Make sure you have at least 50 members. You can also open this ticket if you have a question about your partnership.\n\n" +
+                "**⚠️ | Management Support**: Open this ticket if you are reporting an Atlanta Roleplay staff member. You can also open this ticket to get support from management (only for major questions, if not a major question, please open a general support ticket).\n\n" +
+                "**🎮 | In-game Support**: To report an in-game player. Usually used for mod scenes! Make sure to upload clips with Medal, Streamable, or Youtube links. Not doing so will result in your report being denied by staff members.\n\n" +
+                "**📷 | Media Application**: Open this ticket to apply for Atlanta Media Team! Make sure you have at least 2-5 pictures of high quality and edited. Make sure your pictures aren't heavily supported by shaders or other applications. Make sure your 13+ and are not banned in-game or have a large punishment history.\n\n" +
+                "Please do not ping HR in general or in any channels to ask questions, but please open these tickets. Not doing so may result in a warning, or a kick depending on severity. Have a great day!"
             );
 
         const selectMenu = new StringSelectMenuBuilder()
