@@ -5,7 +5,6 @@ const {
   StringSelectMenuBuilder,
   ButtonStyle,
   PermissionsBitField,
-  ChannelType,
   AttachmentBuilder
 } = require('discord.js');
 const fs = require('fs');
@@ -64,7 +63,7 @@ module.exports = {
 
         const channel = await interaction.guild.channels.create({
           name: ticketName,
-          type: ChannelType.GuildText,
+          type: 'GUILD_TEXT', // FIXED: use string instead of ChannelType.GuildText for compatibility
           parent: categoryId,
           permissionOverwrites: [
             { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -150,6 +149,7 @@ module.exports = {
     });
   }
 };
+
 
 
 
