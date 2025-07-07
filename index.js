@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const { Client, GatewayIntentBits, Collection, PermissionsBitField, EmbedBuilder } = require('discord.js'); // Added EmbedBuilder
+const { Client, GatewayIntentBits, Collection, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -22,7 +22,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers, // Essential for guildMemberAdd event
+        GatewayIntentBits.GuildMembers, // Essential for guildMemberAdd and guildMemberUpdate events
     ],
 });
 
@@ -88,10 +88,10 @@ client.on('messageCreate', async (message) => {
 
 // ⭐⭐⭐ AUTO-ROLE AND WELCOME MESSAGE LOGIC STARTS HERE ⭐⭐⭐
 client.on('guildMemberAdd', async member => {
-    const autoRoleId = '1373743096659050536'; // The ID of the role you want to auto-assign
-    const welcomeChannelId = '1390428167180648488'; // Updated to the specified welcome channel ID
+    const autoRoleId = '1373743096659050536'; // The ID of the role you want to auto-assign on join
+    const welcomeChannelId = '1390428167180648488'; // Welcome channel ID
 
-    // --- Auto-Role Logic ---
+    // --- Auto-Role Logic (on member join) ---
     try {
         const role = member.guild.roles.cache.get(autoRoleId);
 
@@ -131,12 +131,9 @@ client.on('guildMemberAdd', async member => {
         }
 
         const memberCount = member.guild.memberCount;
-        const waveEmoji = '<a:wave:1263966302289133729>'; // Animated wave emoji URL
-        const endEmoji = '<a:atlanta_rp_logo:1390806273619918990>'; // New emoji URL
-        // Fallback for wave emoji if the URL doesn't work or is not desired: const waveEmoji = '👋';
+        const waveEmoji = '<a:wave_animated:1263966302289133729>'; // Animated wave emoji
+        const endEmoji = '<a:arplogo:1390806273619918990>'; // Custom ARPLOGO emoji
 
-        // Changed member.user.tag to member.toString() to ping the user
-        // Added backticks for the member count to create a gray box, and the new emoji at the end
         const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! We now have \`${memberCount}\` members.** ${endEmoji}`;
 
         await welcomeChannel.send(welcomeMessage);
@@ -146,7 +143,50 @@ client.on('guildMemberAdd', async member => {
         console.error(`[WELCOME MESSAGE FATAL] Failed to send welcome message for ${member.user.tag} in guild "${member.guild.name}":`, error);
     }
 });
-// ⭐⭐⭐ AUTO-ROLE AND WELCOME MESSAGE LOGIC ENDS HERE ⭐⭐⭐
+
+// ⭐⭐⭐ ROLE REMOVAL LOGIC (on guildMemberUpdate) STARTS HERE ⭐⭐⭐
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+    const triggerRoleId = '1379847693286772891'; // The role that, when added, triggers the removal
+    const roleToRemoveId = '1373743096659050536'; // The role to be removed automatically
+
+    // Check if the new member has the trigger role AND the old member did NOT have it
+    const hasTriggerRoleNow = newMember.roles.cache.has(triggerRoleId);
+    const didNotHaveTriggerRoleBefore = !oldMember.roles.cache.has(triggerRoleId);
+
+    // Check if the new member still has the role to be removed
+    const hasRoleToRemove = newMember.roles.cache.has(roleToRemoveId);
+
+    if (hasTriggerRoleNow && didNotHaveTriggerRoleBefore && hasRoleToRemove) {
+        try {
+            const roleToRemove = newMember.guild.roles.cache.get(roleToRemoveId);
+
+            if (!roleToRemove) {
+                console.error(`[ROLE REMOVAL ERROR] Role to remove with ID ${roleToRemoveId} not found in guild "${newMember.guild.name}".`);
+                return;
+            }
+
+            // Check bot's permissions and role hierarchy for removal
+            if (newMember.guild.members.me.roles.highest.position <= roleToRemove.position) {
+                console.error(`[ROLE REMOVAL ERROR] Bot's highest role is not above the role to remove (${roleToRemove.name}) in hierarchy for guild "${newMember.guild.name}".`);
+                console.error(`[ROLE REMOVAL INFO] Bot's highest role position: ${newMember.guild.members.me.roles.highest.position}`);
+                console.error(`[ROLE REMOVAL INFO] Role to remove position: ${roleToRemove.position}`);
+                return;
+            }
+
+            if (!newMember.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+                console.error(`[ROLE REMOVAL ERROR] Bot does not have 'Manage Roles' permission to remove roles in guild "${newMember.guild.name}".`);
+                return;
+            }
+
+            await newMember.roles.remove(roleToRemove);
+            console.log(`[ROLE REMOVAL SUCCESS] Removed role "${roleToRemove.name}" from ${newMember.user.tag} in guild "${newMember.guild.name}" because they received role "${newMember.guild.roles.cache.get(triggerRoleId)?.name || triggerRoleId}".`);
+
+        } catch (error) {
+            console.error(`[ROLE REMOVAL FATAL] Failed to remove role from ${newMember.user.tag} in guild "${newMember.guild.name}":`, error);
+        }
+    }
+});
+// ⭐⭐⭐ ROLE REMOVAL LOGIC ENDS HERE ⭐⭐⭐
 
 // Call the setup method for commands that define it (e.g., your ticket command's interaction listener)
 for (const command of client.commands.values()) {
