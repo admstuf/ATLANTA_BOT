@@ -27,7 +27,7 @@ module.exports = {
 
         try {
             // Send the initial message with the button to the channel, making it visible to everyone.
-            await message.channel.send({ embeds: [embed], components: [row] }); // Removed ephemeral: true
+            await message.channel.send({ embeds: [embed], components: [row] });
         } catch (error) {
             console.error('Failed to send appeal panel:', error);
             await message.reply({ content: '❌ Failed to post the appeal panel. Please try again later.', ephemeral: true });
@@ -74,7 +74,8 @@ module.exports = {
                     // Add action rows to the modal
                     modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
 
-                    // Show the modal to the user who clicked the button (anyone can click this)
+                    // ⭐ Added log before showing modal ⭐
+                    console.log(`[APPEAL] Attempting to show modal for user ${interaction.user.tag}`);
                     try {
                         await interaction.showModal(modal);
                     } catch (error) {
@@ -148,7 +149,6 @@ module.exports = {
 
                     // Check if the bot has permission to send messages in the mod log channel
                     if (!modChannel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.SendMessages)) {
-                        // Corrected console.error usage: removed ephemeral: true
                         console.error(`[APPEAL MODAL ERROR] Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.`);
                         await interaction.editReply({ content: '❌ Error: Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.', ephemeral: true });
                         return;

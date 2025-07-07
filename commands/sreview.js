@@ -33,7 +33,7 @@ module.exports = {
 
         try {
             // Send the initial message with the button to the channel, making it visible to everyone.
-            await message.channel.send({ embeds: [embed], components: [row] }); // Removed ephemeral: true
+            await message.channel.send({ embeds: [embed], components: [row] });
         } catch (error) {
             console.error('Failed to send moderator review panel:', error);
             await message.reply({ content: '❌ Failed to post the moderator review panel. Please try again later.', ephemeral: true });
@@ -46,6 +46,8 @@ module.exports = {
             if (interaction.isButton()) {
                 // Check if the clicked button is the "Start Review" button for this command
                 if (interaction.customId === 'start_mod_review') {
+                    // ⭐ Added log before showing modal ⭐
+                    console.log(`[SREVIEW] Attempting to show modal for user ${interaction.user.tag}`);
                     // Create the modal for review submission
                     const modal = new ModalBuilder()
                         .setCustomId('mod_review_modal') // Unique customId for this modal
@@ -81,7 +83,6 @@ module.exports = {
                     // Add action rows to the modal
                     modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
 
-                    // Show the modal to the user who clicked the button
                     try {
                         await interaction.showModal(modal);
                     } catch (error) {
@@ -92,10 +93,9 @@ module.exports = {
 
                 // Handle staff actions (Accept/Decline) on the review submission in the mod log channel
                 if (interaction.customId.startsWith('accept_mod_review_') || interaction.customId.startsWith('decline_mod_review_')) {
-                    // Extract the user ID from the customId (e.g., 'accept_mod_review_123456789')
                     const userId = interaction.customId.split('_').pop();
                     const guild = interaction.guild;
-                    const reviewedUser = await guild.members.fetch(userId).catch(() => null); // Fetch the user who submitted the review
+                    const reviewedUser = await guild.members.fetch(userId).catch(() => null);
 
                     if (!reviewedUser) {
                         return interaction.reply({ content: '❌ Could not find the user associated with this review.', ephemeral: true });
@@ -104,27 +104,24 @@ module.exports = {
                     const action = interaction.customId.startsWith('accept') ? 'accepted' : 'declined';
                     const color = action === 'accepted' ? '#00ff00' : '#ff0000';
 
-                    // Create an embed to send to the user who submitted the review
                     const decisionEmbed = new EmbedBuilder()
                         .setTitle(`Moderator Review ${action === 'accepted' ? 'Accepted' : 'Declined'}`)
                         .setDescription(`Your moderator review has been **${action}** by our HR team.`)
                         .setColor(color)
                         .setTimestamp();
 
-                    // Attempt to DM the user with the decision
                     await reviewedUser.send({ embeds: [decisionEmbed] }).catch(() => {
                         console.error(`Failed to send review decision DM to ${reviewedUser.user.tag}.`);
                     });
 
-                    // Update the message in the mod log channel where the review was originally posted
                     await interaction.update({
                         embeds: [
-                            new EmbedBuilder(interaction.message.embeds[0].toJSON()) // Keep original embed content
-                                .setColor(color) // Update color based on decision
-                                .setFooter({ text: `Review ${action} by ${interaction.user.tag}` }) // Add footer with staff member who acted
-                                .setTimestamp() // Update timestamp
+                            new EmbedBuilder(interaction.message.embeds[0].toJSON())
+                                .setColor(color)
+                                .setFooter({ text: `Review ${action} by ${interaction.user.tag}` })
+                                .setTimestamp()
                         ],
-                        components: [] // Remove the buttons after a decision is made
+                        components: []
                     });
                     await interaction.followUp({ content: `✅ Moderator Review ${action}. User notified (if possible).`, ephemeral: true });
                 }
@@ -132,56 +129,52 @@ module.exports = {
 
             // Handle modal submissions
             if (interaction.isModalSubmit()) {
-                // Check if the submitted modal is the "Moderator Review Form"
                 if (interaction.customId === 'mod_review_modal') {
-                    // Retrieve the input values from the modal
+                    // ⭐ Defer the reply immediately to prevent "interaction failed" ⭐
+                    await interaction.deferReply({ ephemeral: true });
+
                     const moderatorName = interaction.fields.getTextInputValue('moderatorNameInput');
                     const rating = interaction.fields.getTextInputValue('ratingInput');
                     const reason = interaction.fields.getTextInputValue('reasonInput');
 
-                    // ⭐⭐⭐ Normalize the moderator name before saving ⭐⭐⭐
                     const normalizedModeratorName = normalizeName(moderatorName);
 
                     const guild = interaction.guild;
-                    const user = interaction.user; // The user who submitted the modal
+                    const user = interaction.user;
 
-                    const modChannelId = '1390957675311009902'; // ID of the channel where reviews will be logged
+                    const modChannelId = '1390957675311009902';
                     const modChannel = guild.channels.cache.get(modChannelId);
 
                     if (!modChannel) {
-                        await interaction.reply({ content: '❌ Error: Moderator review log channel not found. Please contact staff.', ephemeral: true });
                         console.error(`[REVIEW MODAL ERROR] Moderator review log channel with ID ${modChannelId} not found.`);
+                        await interaction.editReply({ content: '❌ Error: Moderator review log channel not found. Please contact staff.', ephemeral: true });
                         return;
                     }
 
-                    // Check if the bot has permission to send messages in the mod log channel
                     if (!modChannel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.SendMessages)) {
-                        await interaction.reply({ content: '❌ Error: Bot does not have permission to send messages in the moderator review log channel. Please contact staff.', ephemeral: true });
-                        console.error(`[REVIEW MODAL ERROR] Bot does not have 'Send Messages' permission in moderator review log channel "${modChannel.name}" (${modChannelId}).`);
+                        console.error(`[REVIEW MODAL ERROR] Bot does not have permission to send messages in the moderator review log channel. Please contact staff.`);
+                        await interaction.editReply({ content: '❌ Error: Bot does not have permission to send messages in the moderator review log channel. Please contact staff.', ephemeral: true });
                         return;
                     }
 
-                    // ⭐⭐⭐ SAVE REVIEW TO FIRESTORE ⭐⭐⭐
                     try {
-                        // Access client.db and client.appId which are set in index.js
                         const reviewsCollectionRef = collection(client.db, `artifacts/${client.appId}/public/data/moderator_reviews`);
                         await addDoc(reviewsCollectionRef, {
                             guildId: guild.id,
                             reviewerId: user.id,
-                            moderatorName: moderatorName, // Keep original name for display
-                            normalizedModeratorName: normalizedModeratorName, // Save normalized name for querying
+                            moderatorName: moderatorName,
+                            normalizedModeratorName: normalizedModeratorName,
                             rating: rating,
                             reason: reason,
-                            timestamp: new Date(), // Store current time
+                            timestamp: new Date(),
                         });
                         console.log(`[FIRESTORE SUCCESS] Moderator review saved for ${moderatorName}.`);
                     } catch (firestoreError) {
                         console.error(`[FIRESTORE ERROR] Failed to save moderator review to Firestore:`, firestoreError);
-                        await interaction.reply({ content: '❌ There was an error saving your review. Please try again later.', ephemeral: true });
-                        return; // Stop execution if saving fails
+                        await interaction.editReply({ content: '❌ There was an error saving your review. Please try again later.', ephemeral: true });
+                        return;
                     }
 
-                    // Create the embed to send to the mod log channel
                     const reviewEmbed = new EmbedBuilder()
                         .setTitle('New Moderator Review Submitted')
                         .setColor('#B22222')
@@ -193,28 +186,25 @@ module.exports = {
                         )
                         .setTimestamp();
 
-                    // Create buttons for staff to accept or decline the review
                     const acceptButton = new ButtonBuilder()
-                        .setCustomId(`accept_mod_review_${user.id}`) // Unique customId for accepting this review
+                        .setCustomId(`accept_mod_review_${user.id}`)
                         .setLabel('Accept Review')
                         .setStyle(ButtonStyle.Success);
 
                     const declineButton = new ButtonBuilder()
-                        .setCustomId(`decline_mod_review_${user.id}`) // Unique customId for declining this review
+                        .setCustomId(`decline_mod_review_${user.id}`)
                         .setLabel('Decline Review')
                         .setStyle(ButtonStyle.Danger);
 
                     const row = new ActionRowBuilder().addComponents(acceptButton, declineButton);
 
-                    // Send the review embed and buttons to the mod log channel
                     try {
                         await modChannel.send({ embeds: [reviewEmbed], components: [row] });
-                        // Reply to the user who submitted the modal (ephemeral so only they see it)
-                        await interaction.reply({ content: '✅ Your moderator review has been successfully submitted to the HR team!', ephemeral: true });
+                        await interaction.editReply({ content: '✅ Your moderator review has been successfully submitted to the HR team!', ephemeral: true });
                         console.log(`[REVIEW MODAL SUCCESS] Moderator review submitted by ${user.tag}.`);
                     } catch (error) {
                         console.error('Failed to send moderator review embed to mod channel:', error);
-                        await interaction.reply({ content: '❌ There was an error submitting your moderator review. Please try again later.', ephemeral: true });
+                        await interaction.editReply({ content: '❌ There was an error submitting your moderator review. Please try again later.', ephemeral: true });
                     }
                 }
             }

@@ -11,7 +11,7 @@ module.exports = {
     // Define the slash command data
     data: new SlashCommandBuilder()
         .setName('myreviews')
-        .setDescription('Displays moderator reviews for you, or all reviews if you are staff.'), // Updated description
+        .setDescription('Displays moderator reviews for you, or all reviews if you are staff.'),
 
     // Execute function for the slash command
     async execute(interaction) {
@@ -45,11 +45,11 @@ module.exports = {
             let q;
 
             if (isStaff) {
-                // ⭐ If staff, query for ALL reviews in the current guild ⭐
+                // If staff, query for ALL reviews in the current guild
                 q = query(reviewsCollectionRef, where('guildId', '==', guildId));
                 console.log(`[MYREVIEWS] Staff user ${interaction.user.tag} requested all reviews.`);
             } else {
-                // ⭐ If not staff, query only for reviews matching their display name ⭐
+                // If not staff, query only for reviews matching their normalized display name
                 q = query(
                     reviewsCollectionRef,
                     where('guildId', '==', guildId),
@@ -101,7 +101,7 @@ module.exports = {
 
                 for (const modName in reviewsByModerator) {
                     const reviews = reviewsByModerator[modName];
-                    description += `**${modName}** (Total: ${reviews.length})\n`;
+                    description += `**${modName}** (Total Reviews: ${reviews.length})\n`;
                     reviews.forEach((review, index) => {
                         const date = review.timestamp ? new Date(review.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
                         description += `> Review ${index + 1}: Rating **${review.rating}/5**\n`;
