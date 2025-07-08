@@ -45,6 +45,7 @@ if (process.env.DISCORD_BOT_TOKEN) {
 
 // ⭐⭐⭐ FIREBASE INITIALIZATION START ⭐⭐⭐
 let firebaseConfig = {};
+// Removed duplicate 'let appId = 'default-app-id';'
 let appId = 'default-app-id'; // Default value for appId
 
 if (process.env.FIREBASE_CONFIG) {
@@ -64,10 +65,12 @@ if (process.env.FIREBASE_CONFIG) {
 // Add a default projectId if it's missing, to prevent Firebase initialization errors
 // Also warn if apiKey is missing, as it's critical for auth/firestore
 if (!firebaseConfig.projectId) {
+    // Removed duplicate console.warn
     console.warn('WARNING: "projectId" not found in firebaseConfig. Using "default-project" for initialization. Please ensure FIREBASE_CONFIG contains a valid projectId.');
     firebaseConfig.projectId = 'default-project'; // Provide a fallback projectId
 }
 if (!firebaseConfig.apiKey) {
+    // Removed duplicate console.error
     console.error('CRITICAL ERROR: "apiKey" not found in firebaseConfig. Firebase authentication and Firestore operations will fail. Please ensure FIREBASE_CONFIG contains a valid apiKey.');
 }
 
@@ -127,6 +130,7 @@ if (!fs.existsSync(commandsPath)) {
 
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
+    // Removed duplicate 'const filePath = path.join(commandsPath, file);'
     const filePath = path.join(commandsPath, file); // Corrected 'commands' to 'commandsPath'
     const command = require(filePath);
 
@@ -153,7 +157,7 @@ client.once('ready', async () => {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN);
     try {
         console.log(`Started refreshing ${slashCommands.length} application (/) commands.`);
-        // Registering commands globally (can take up to an hour to propagate)
+        // Registering commands globally (can can take up to an hour to propagate)
         // For testing, you might want to register per-guild:
         // await rest.put(Routes.applicationGuildCommands(client.user.id, 'YOUR_GUILD_ID'), { body: slashCommands });
         await rest.put(Routes.applicationCommands(client.user.id), { body: slashCommands });
@@ -239,7 +243,7 @@ client.on(Events.InteractionCreate, async interaction => {
             try {
                 await command.handleModalSubmit(interaction);
             }
-            catch (error) {
+            catch (error) { // This catch is now correctly placed
                 console.error(`Error handling modal submission for customId ${interaction.customId}:`, error);
                 if (interaction.replied || interaction.deferred) {
                     await interaction.followUp({ content: 'There was an error processing your submission!', flags: 64 }).catch(err => console.error('Failed to followUp modal submission:', err));
@@ -358,6 +362,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
+
 
 
 
