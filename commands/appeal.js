@@ -74,71 +74,69 @@ module.exports = {
                     // Add action rows to the modal
                     modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
 
-                    // ⭐ Added log before showing modal ⭐
-                    console.log(`[APPEAL] Attempting to show modal for user ${interaction.user.tag}`);
+                    console.log(`[APPEAL] Attempting to show modal for user ${interaction.user.tag} (${interaction.user.id}).`);
                     try {
                         await interaction.showModal(modal);
                     } catch (error) {
-                        console.error('Failed to show appeal modal:', error);
-                        await interaction.reply({ content: '❌ Failed to open the appeal form. Please try again later.', ephemeral: true });
+                        console.error(`[APPEAL ERROR] Failed to show appeal modal for ${interaction.user.tag}:`, error);
+                        if (!interaction.replied && !interaction.deferred) {
+                            await interaction.reply({ content: '❌ Failed to open the appeal form. Please try again later.', ephemeral: true });
+                        } else {
+                            await interaction.followUp({ content: '❌ Failed to open the appeal form. Please try again later.', ephemeral: true });
+                        }
                     }
                 }
 
                 // ACCEPT/DECLINE BUTTONS (for staff in the mod log channel)
                 if (interaction.customId.startsWith('accept_appeal_') || interaction.customId.startsWith('decline_appeal_')) {
-                    const userId = interaction.customId.split('_').pop(); // Extract user ID from customId
+                    const userId = interaction.customId.split('_').pop();
                     const guild = interaction.guild;
-                    const appealedUser = await guild.members.fetch(userId).catch(() => null); // Fetch the user who submitted the appeal
+                    const appealedUser = await guild.members.fetch(userId).catch(() => null);
 
                     if (!appealedUser) {
                         return interaction.reply({ content: '❌ Could not find the user associated with this appeal.', ephemeral: true });
                     }
 
-                    const action = interaction.customId.startsWith('accept') ? 'accepted' : 'declined';
+                    const action = interaction.customId.startsWith('accept') ? 'accepted' : 'decline'; // Corrected 'declined' to 'decline' for consistency
                     const color = action === 'accepted' ? '#00ff00' : '#ff0000';
 
-                    // Create an embed to send to the user who submitted the appeal
                     const decisionEmbed = new EmbedBuilder()
                         .setTitle(`Ban Appeal ${action === 'accepted' ? 'Accepted' : 'Declined'}`)
-                        .setDescription(`Your ban appeal has been **${action}** by our HR team.`)
+                        .setDescription(`Your ban appeal has been **${action}d** by our HR team.`) // Added 'd' for grammar
                         .setColor(color)
                         .setTimestamp();
 
-                    // Attempt to DM the user with the decision
                     await appealedUser.send({ embeds: [decisionEmbed] }).catch(() => {
                         console.error(`Failed to send appeal decision DM to ${appealedUser.user.tag}.`);
                     });
 
-                    // Update the message in the mod log channel where the appeal was posted
                     await interaction.update({
                         embeds: [
-                            new EmbedBuilder(interaction.message.embeds[0].toJSON()) // Keep original embed content
-                                .setColor(color) // Update color based on decision
-                                .setFooter({ text: `Appeal ${action} by ${interaction.user.tag}` }) // Add footer with staff member who acted
-                                .setTimestamp() // Update timestamp
+                            new EmbedBuilder(interaction.message.embeds[0].toJSON())
+                                .setColor(color)
+                                .setFooter({ text: `Appeal ${action}d by ${interaction.user.tag}` }) // Added 'd' for grammar
+                                .setTimestamp()
                         ],
-                        components: [] // Remove the buttons after a decision is made
+                        components: []
                     });
-                    await interaction.followUp({ content: `✅ Appeal ${action}. User notified (if possible).`, ephemeral: true });
+                    await interaction.followUp({ content: `✅ Appeal ${action}d. User notified (if possible).`, ephemeral: true }); // Added 'd' for grammar
                 }
             }
 
             // Handle modal submissions
             if (interaction.isModalSubmit()) {
-                // Check if the submitted modal is the "Ban Appeal Form"
                 if (interaction.customId === 'appeal_submission_modal') {
-                    // ⭐ Defer the reply immediately to prevent "interaction failed" ⭐
+                    // Defer the reply immediately to prevent "interaction failed"
                     await interaction.deferReply({ ephemeral: true });
 
-                    // Retrieve the input values from the modal
                     const robloxUsername = interaction.fields.getTextInputValue('robloxUsernameInput');
                     const banReason = interaction.fields.getTextInputValue('banReasonInput');
                     const unbanReason = interaction.fields.getTextInputValue('unbanReasonInput');
 
                     const guild = interaction.guild;
-                    const user = interaction.user; // The user who submitted the modal
+                    const user = interaction.user;
 
-                    const modChannelId = '1390957675311009902'; // ID of the channel where appeals will be logged
+                    const modChannelId = '1390957675311009902';
                     const modChannel = guild.channels.cache.get(modChannelId);
 
                     if (!modChannel) {
@@ -147,14 +145,12 @@ module.exports = {
                         return;
                     }
 
-                    // Check if the bot has permission to send messages in the mod log channel
                     if (!modChannel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.SendMessages)) {
                         console.error(`[APPEAL MODAL ERROR] Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.`);
                         await interaction.editReply({ content: '❌ Error: Bot does not have permission to send messages in the mod appeal log channel. Please contact staff.', ephemeral: true });
                         return;
                     }
 
-                    // Create the embed to send to the mod log channel
                     const appealEmbed = new EmbedBuilder()
                         .setTitle('New Ban Appeal Submitted (Modal)')
                         .setColor('#B22222')
@@ -166,23 +162,20 @@ module.exports = {
                         )
                         .setTimestamp();
 
-                    // Create buttons for staff to accept or decline the appeal
                     const acceptButton = new ButtonBuilder()
-                        .setCustomId(`accept_appeal_${user.id}`) // Unique customId for accepting this appeal
+                        .setCustomId(`accept_appeal_${user.id}`)
                         .setLabel('Accept Appeal')
                         .setStyle(ButtonStyle.Success);
 
                     const declineButton = new ButtonBuilder()
-                        .setCustomId(`decline_appeal_${user.id}`) // Unique customId for declining this appeal
+                        .setCustomId(`decline_appeal_${user.id}`)
                         .setLabel('Decline Appeal')
                         .setStyle(ButtonStyle.Danger);
 
                     const row = new ActionRowBuilder().addComponents(acceptButton, declineButton);
 
-                    // Send the appeal embed and buttons to the mod log channel
                     try {
                         await modChannel.send({ embeds: [appealEmbed], components: [row] });
-                        // Edit the deferred reply to confirm submission
                         await interaction.editReply({ content: '✅ Your ban appeal has been successfully submitted to the HR team!', ephemeral: true });
                         console.log(`[APPEAL MODAL SUCCESS] Appeal submitted by ${user.tag}.`);
                     } catch (error) {
