@@ -89,7 +89,7 @@ module.exports = {
 
                 // ACCEPT/DECLINE BUTTONS (for staff in the mod log channel)
                 if (interaction.customId.startsWith('accept_appeal_') || interaction.customId.startsWith('decline_appeal_')) {
-                    const userId = interaction.customId.split('_').pop();
+                    const userId = interaction.customId.split('_').pop(); // Extract user ID from customId
                     const guild = interaction.guild;
                     const appealedUser = await guild.members.fetch(userId).catch(() => null);
 

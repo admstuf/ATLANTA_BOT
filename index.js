@@ -48,10 +48,15 @@ const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__f
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 // Add a default projectId if it's missing, to prevent Firebase initialization errors
+// Also warn if apiKey is missing, as it's critical for auth/firestore
 if (!firebaseConfig.projectId) {
     console.warn('WARNING: "projectId" not found in firebaseConfig. Using "default-project" for initialization. Please ensure __firebase_config is correctly set.');
     firebaseConfig.projectId = 'default-project'; // Provide a fallback projectId
 }
+if (!firebaseConfig.apiKey) {
+    console.error('CRITICAL ERROR: "apiKey" not found in firebaseConfig. Firebase authentication and Firestore operations will fail.');
+}
+
 
 let firebaseApp;
 let db;
@@ -109,11 +114,16 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
-    if ('name' in command && 'execute' in command) {
+
+    // Load as prefix command if it has 'name' and 'execute' for prefix commands
+    if ('name' in command && 'execute' in command && !('data' in command)) { // Added !('data' in command) to distinguish
         client.commands.set(command.name, command);
         console.log(`Loaded prefix command: ${command.name}`);
+    } else if ('name' in command && 'execute' in command) { // If it has both, assume it's a slash command with a prefix fallback
+        client.commands.set(command.name, command);
+        console.log(`Loaded command (likely slash): ${command.name}`);
     } else {
-        console.warn(`[WARNING] The prefix command at ${filePath} is missing a required "name" or "execute" property.`);
+        console.warn(`[WARNING] The command at ${filePath} is missing a required "name" or "execute" property for prefix commands.`);
     }
 
     // ⭐⭐⭐ Collect Slash Command Data ⭐⭐⭐
@@ -162,13 +172,14 @@ client.on('messageCreate', async (message) => {
         await command.execute(message, args); // Execute the command
     } catch (error) {
         console.error(error); // Log any errors during command execution
-        message.reply('There was an error executing that command.'); // Inform the user
+        // Use flags for ephemeral response
+        message.reply({ content: 'There was an error executing that command.', flags: 64 }).catch(err => console.error('Failed to reply to message:', err));
     }
 });
 
-// ⭐⭐⭐ INTERACTION COMMAND HANDLER (FOR SLASH COMMANDS) ⭐⭐⭐
+// ⭐⭐⭐ INTERACTION COMMAND HANDLER (FOR SLASH COMMANDS, BUTTONS, MODALS) ⭐⭐⭐
 client.on('interactionCreate', async interaction => {
-    // Only handle chat input commands (slash commands) if it's not a button or modal submission
+    // Handle chat input commands (slash commands)
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
 
@@ -182,14 +193,16 @@ client.on('interactionCreate', async interaction => {
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+                // Use flags for ephemeral response
+                await interaction.followUp({ content: 'There was an error while executing this command!', flags: 64 }).catch(err => console.error('Failed to followUp to interaction:', err));
             } else {
-                await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+                // Use flags for ephemeral response
+                await interaction.reply({ content: 'There was an error while executing this command!', flags: 64 }).catch(err => console.error('Failed to reply to interaction:', err));
             }
         }
     }
     // Note: Button and Modal interactions are handled within the individual command's setup() function
-    // (e.g., appeal.js and sreview.js already have this logic)
+    // (e.g., appeal.js and sreview.js already have this logic via client.on(Events.InteractionCreate))
 });
 
 
