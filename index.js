@@ -44,17 +44,31 @@ if (process.env.DISCORD_BOT_TOKEN) {
 }
 
 // ⭐⭐⭐ FIREBASE INITIALIZATION START ⭐⭐⭐
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+let firebaseConfig = {};
+let appId = 'default-app-id'; // Default value
+
+if (process.env.FIREBASE_CONFIG) {
+    try {
+        firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+        appId = firebaseConfig.appId || 'default-app-id'; // Extract appId from the parsed config
+        console.log('Firebase configuration loaded from FIREBASE_CONFIG environment variable.');
+    } catch (e) {
+        console.error('ERROR: Could not parse FIREBASE_CONFIG environment variable. It must be a valid JSON string.', e);
+        // Fallback to empty config if parsing fails, which will lead to Firebase init error
+        firebaseConfig = {};
+    }
+} else {
+    console.warn('WARNING: FIREBASE_CONFIG environment variable not found. Firebase will attempt to initialize with an empty config, likely failing.');
+}
 
 // Add a default projectId if it's missing, to prevent Firebase initialization errors
 // Also warn if apiKey is missing, as it's critical for auth/firestore
 if (!firebaseConfig.projectId) {
-    console.warn('WARNING: "projectId" not found in firebaseConfig. Using "default-project" for initialization. Please ensure __firebase_config is correctly set.');
+    console.warn('WARNING: "projectId" not found in firebaseConfig. Using "default-project" for initialization. Please ensure FIREBASE_CONFIG contains a valid projectId.');
     firebaseConfig.projectId = 'default-project'; // Provide a fallback projectId
 }
 if (!firebaseConfig.apiKey) {
-    console.error('CRITICAL ERROR: "apiKey" not found in firebaseConfig. Firebase authentication and Firestore operations will fail.');
+    console.error('CRITICAL ERROR: "apiKey" not found in firebaseConfig. Firebase authentication and Firestore operations will fail. Please ensure FIREBASE_CONFIG contains a valid apiKey.');
 }
 
 
@@ -71,6 +85,7 @@ try {
     // Sign in to Firebase Auth
     (async () => {
         try {
+            // Note: __initial_auth_token is a Canvas-specific variable. If not in Canvas, it will be undefined.
             if (typeof __initial_auth_token !== 'undefined') {
                 await signInWithCustomToken(auth, __initial_auth_token);
                 console.log('Firebase signed in with custom token.');
@@ -128,8 +143,6 @@ for (const file of commandFiles) {
     } else {
         console.warn(`[WARNING] The command at ${filePath} is missing a required "name"/"data" or "execute" property.`);
     }
-
-    // ⭐ No more direct setup() calls here. Interaction handling is centralized below. ⭐
 }
 
 
@@ -225,7 +238,8 @@ client.on(Events.InteractionCreate, async interaction => {
         if (command && typeof command.handleModalSubmit === 'function') {
             try {
                 await command.handleModalSubmit(interaction);
-            } catch (error) {
+            }
+            catch (error) {
                 console.error(`Error handling modal submission for customId ${interaction.customId}:`, error);
                 if (interaction.replied || interaction.deferred) {
                     await interaction.followUp({ content: 'There was an error processing your submission!', flags: 64 }).catch(err => console.error('Failed to followUp modal submission:', err));
@@ -290,7 +304,7 @@ client.on('guildMemberAdd', async member => {
 
         const memberCount = member.guild.memberCount;
         const waveEmoji = '<a:wave_animated:1391882992955297962>'; // Corrected animated wave emoji ID
-        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! We now have \`${memberCount}\` members.**`;
+        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! You are our \`${memberCount}\` member!**`;
 
         await welcomeChannel.send(welcomeMessage);
         console.log(`[WELCOME MESSAGE SUCCESS] Sent welcome message for ${member.user.tag} to channel "${welcomeChannel.name}".`);
@@ -344,4 +358,5 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
+
 
