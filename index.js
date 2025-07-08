@@ -115,15 +115,12 @@ for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
 
-    // Load as prefix command if it has 'name' and 'execute' for prefix commands
-    if ('name' in command && 'execute' in command && !('data' in command)) { // Added !('data' in command) to distinguish
+    // Load as prefix command if it has 'name' and 'execute'
+    if ('name' in command && 'execute' in command) {
         client.commands.set(command.name, command);
-        console.log(`Loaded prefix command: ${command.name}`);
-    } else if ('name' in command && 'execute' in command) { // If it has both, assume it's a slash command with a prefix fallback
-        client.commands.set(command.name, command);
-        console.log(`Loaded command (likely slash): ${command.name}`);
+        console.log(`Loaded command: ${command.name}`); // Changed log to be more general
     } else {
-        console.warn(`[WARNING] The command at ${filePath} is missing a required "name" or "execute" property for prefix commands.`);
+        console.warn(`[WARNING] The command at ${filePath} is missing a required "name" or "execute" property.`);
     }
 
     // ⭐⭐⭐ Collect Slash Command Data ⭐⭐⭐
@@ -133,11 +130,24 @@ for (const file of commandFiles) {
         console.log(`Collected slash command data for: ${command.name}`);
     }
 
+    // ⭐ Call setup function ONLY ONCE here during command loading ⭐
     if ('setup' in command) {
         command.setup(client);
         console.log(`Setup function initialized for command: ${command.name}`);
     }
 }
+
+// ⭐ REMOVED THE DUPLICATE SETUP CALL LOOP FROM HERE ⭐
+// The loop below was removed:
+/*
+for (const command of client.commands.values()) {
+    if (typeof command.setup === 'function') {
+        command.setup(client);
+        console.log(`Setup function initialized for command: ${command.name}`);
+    }
+}
+*/
+
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
@@ -307,6 +317,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 // Call the setup method for commands that define it (e.g., your ticket command's interaction listener)
+// This loop is now the ONLY place where command.setup() is called.
 for (const command of client.commands.values()) {
     if (typeof command.setup === 'function') {
         command.setup(client);
