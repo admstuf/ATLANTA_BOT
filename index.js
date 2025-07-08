@@ -304,7 +304,7 @@ client.on('guildMemberAdd', async member => {
 
         const memberCount = member.guild.memberCount;
         const waveEmoji = '<a:wave_animated:1391882992955297962>'; // Corrected animated wave emoji ID
-        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! You are our \`${memberCount}\` member!**`;
+        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! You are our \`${memberCount}\` member!**`; // Corrected welcome message
 
         await welcomeChannel.send(welcomeMessage);
         console.log(`[WELCOME MESSAGE SUCCESS] Sent welcome message for ${member.user.tag} to channel "${welcomeChannel.name}".`);
@@ -358,5 +358,6 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
+
 
 
