@@ -168,26 +168,28 @@ client.on('messageCreate', async (message) => {
 
 // ⭐⭐⭐ INTERACTION COMMAND HANDLER (FOR SLASH COMMANDS) ⭐⭐⭐
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return; // Only handle slash commands
+    // Only handle chat input commands (slash commands) if it's not a button or modal submission
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
 
-    const command = client.commands.get(interaction.commandName);
+        if (!command) {
+            console.error(`No command matching ${interaction.commandName} was found.`);
+            return;
+        }
 
-    if (!command) {
-        console.error(`No command matching ${interaction.commandName} was found.`);
-        return;
-    }
-
-    try {
-        // Pass the interaction object to the command's execute method
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+            }
         }
     }
+    // Note: Button and Modal interactions are handled within the individual command's setup() function
+    // (e.g., appeal.js and sreview.js already have this logic)
 });
 
 
