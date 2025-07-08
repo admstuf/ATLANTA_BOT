@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const { Client, GatewayIntentBits, Collection, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, PermissionsBitField, EmbedBuilder, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { REST } = require('@discordjs/rest');
@@ -115,38 +115,22 @@ for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
 
-    // Load as prefix command if it has 'name' and 'execute'
-    if ('name' in command && 'execute' in command) {
+    // Load as prefix command if it has 'name' and 'execute' and is NOT a slash command
+    if ('name' in command && 'execute' in command && !command.data) {
         client.commands.set(command.name, command);
-        console.log(`Loaded command: ${command.name}`); // Changed log to be more general
-    } else {
-        console.warn(`[WARNING] The command at ${filePath} is missing a required "name" or "execute" property.`);
+        console.log(`Loaded prefix command: ${command.name}`);
     }
-
-    // ⭐⭐⭐ Collect Slash Command Data ⭐⭐⭐
-    // Only add slash command data if the command exports a 'data' property
-    if ('data' in command && typeof command.data.toJSON === 'function') {
+    // Load as slash command if it has 'data' and 'execute'
+    else if ('data' in command && 'execute' in command) {
+        client.commands.set(command.data.name, command); // Use data.name for slash commands
         slashCommands.push(command.data.toJSON());
-        console.log(`Collected slash command data for: ${command.name}`);
+        console.log(`Loaded slash command: ${command.data.name}`);
+    } else {
+        console.warn(`[WARNING] The command at ${filePath} is missing a required "name"/"data" or "execute" property.`);
     }
 
-    // ⭐ Call setup function ONLY ONCE here during command loading ⭐
-    if ('setup' in command) {
-        command.setup(client);
-        console.log(`Setup function initialized for command: ${command.name}`);
-    }
+    // ⭐ No more direct setup() calls here. Interaction handling is centralized below. ⭐
 }
-
-// ⭐ REMOVED THE DUPLICATE SETUP CALL LOOP FROM HERE ⭐
-// The loop below was removed:
-/*
-for (const command of client.commands.values()) {
-    if (typeof command.setup === 'function') {
-        command.setup(client);
-        console.log(`Setup function initialized for command: ${command.name}`);
-    }
-}
-*/
 
 
 client.once('ready', async () => {
@@ -176,43 +160,87 @@ client.on('messageCreate', async (message) => {
     const commandName = args.shift().toLowerCase(); // Extract command name and convert to lowercase
 
     const command = client.commands.get(commandName); // Get the command from the collection
-    if (!command) return; // If command not found, do nothing
+    if (!command || !command.execute) return; // If command not found or no execute method, do nothing
 
     try {
         await command.execute(message, args); // Execute the command
     } catch (error) {
-        console.error(error); // Log any errors during command execution
+        console.error(`Error executing prefix command ${commandName}:`, error); // Log any errors during command execution
         // Use flags for ephemeral response
         message.reply({ content: 'There was an error executing that command.', flags: 64 }).catch(err => console.error('Failed to reply to message:', err));
     }
 });
 
-// ⭐⭐⭐ INTERACTION COMMAND HANDLER (FOR SLASH COMMANDS, BUTTONS, MODALS) ⭐⭐⭐
-client.on('interactionCreate', async interaction => {
-    // Handle chat input commands (slash commands)
+// ⭐⭐⭐ CENTRALIZED INTERACTION COMMAND HANDLER (FOR SLASH COMMANDS, BUTTONS, MODALS) ⭐⭐⭐
+client.on(Events.InteractionCreate, async interaction => {
+    // Pass client object to interaction handlers for database access etc.
+    interaction.client = client;
+
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
 
         if (!command) {
-            console.error(`No command matching ${interaction.commandName} was found.`);
+            console.error(`No slash command matching ${interaction.commandName} was found.`);
             return;
         }
 
         try {
             await command.execute(interaction);
         } catch (error) {
-            console.error(error);
+            console.error(`Error executing slash command ${interaction.commandName}:`, error);
             if (interaction.replied || interaction.deferred) {
-                // Use flags for ephemeral response
                 await interaction.followUp({ content: 'There was an error while executing this command!', flags: 64 }).catch(err => console.error('Failed to followUp to interaction:', err));
             } else {
-                // Use flags for ephemeral response
                 await interaction.reply({ content: 'There was an error while executing this command!', flags: 64 }).catch(err => console.error('Failed to reply to interaction:', err));
             }
         }
+    } else if (interaction.isButton()) {
+        // Handle button interactions
+        const commandName = interaction.message.interaction?.commandName || interaction.customId.split('_')[0]; // Try to get original slash command or first part of customId
+        const command = client.commands.get(commandName);
+
+        if (command && typeof command.handleButtonInteraction === 'function') {
+            try {
+                await command.handleButtonInteraction(interaction);
+            } catch (error) {
+                console.error(`Error handling button interaction for customId ${interaction.customId}:`, error);
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: 'There was an error processing this button action!', flags: 64 }).catch(err => console.error('Failed to followUp button interaction:', err));
+                } else {
+                    await interaction.reply({ content: 'There was an error processing this button action!', flags: 64 }).catch(err => console.error('Failed to reply button interaction:', err));
+                }
+            }
+        } else {
+            console.warn(`No specific button handler found for customId: ${interaction.customId}`);
+            // Fallback for unhandled buttons to prevent "interaction failed"
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.deferUpdate().catch(err => console.error('Failed to deferUpdate for unhandled button:', err));
+            }
+        }
+    } else if (interaction.isModalSubmit()) {
+        // Handle modal submissions
+        const commandName = interaction.customId.split('_')[0]; // Get the base command name from the modal customId
+        const command = client.commands.get(commandName);
+
+        if (command && typeof command.handleModalSubmit === 'function') {
+            try {
+                await command.handleModalSubmit(interaction);
+            } catch (error) {
+                console.error(`Error handling modal submission for customId ${interaction.customId}:`, error);
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: 'There was an error processing your submission!', flags: 64 }).catch(err => console.error('Failed to followUp modal submission:', err));
+                } else {
+                    await interaction.reply({ content: 'There was an error processing your submission!', flags: 64 }).catch(err => console.error('Failed to reply modal submission:', err));
+                }
+            }
+        } else {
+            console.warn(`No specific modal handler found for customId: ${interaction.customId}`);
+            // Fallback for unhandled modals to prevent "interaction failed"
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ content: 'An unexpected error occurred with your submission. Please try again.', flags: 64 }).catch(err => console.error('Failed to reply for unhandled modal:', err));
+            }
+        }
     }
-    // Note: Button and Modal interactions are handled within the individual command's setup() function
-    // (e.g., appeal.js and sreview.js already have this logic via client.on(Events.InteractionCreate))
 });
 
 
@@ -262,8 +290,7 @@ client.on('guildMemberAdd', async member => {
 
         const memberCount = member.guild.memberCount;
         const waveEmoji = '<a:wave_animated:1391882992955297962>'; // Corrected animated wave emoji ID
-        // Removed the arplogo emoji from here
-        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! We now have \`${memberCount}\` members.**`; // Removed ${endEmoji}
+        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! We now have \`${memberCount}\` members.**`;
 
         await welcomeChannel.send(welcomeMessage);
         console.log(`[WELCOME MESSAGE SUCCESS] Sent welcome message for ${member.user.tag} to channel "${welcomeChannel.name}".`);
@@ -316,13 +343,5 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
     }
 });
 
-// Call the setup method for commands that define it (e.g., your ticket command's interaction listener)
-// This loop is now the ONLY place where command.setup() is called.
-for (const command of client.commands.values()) {
-    if (typeof command.setup === 'function') {
-        command.setup(client);
-        console.log(`Setup function initialized for command: ${command.name}`);
-    }
-}
-
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
+
