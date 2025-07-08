@@ -2,8 +2,8 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 const moment = require('moment'); // Ensure moment is installed or use native Date
 
 module.exports = {
-    name: 'ticket', // <--- ADD THIS LINE! This defines the command name.
-    description: 'Displays the ticket creation panel.', // (Optional, but good practice)
+    name: 'ticket', // This defines the command name for prefix commands
+    description: 'Displays the ticket creation panel.',
     async execute(message) {
         const embed = new EmbedBuilder()
             .setColor('#B22222')
@@ -38,143 +38,144 @@ module.exports = {
             await message.channel.send({ embeds: [embed], components: [row] });
         } catch (err) {
             console.error('Failed to send ticket panel:', err);
-            await message.reply({ content: '❌ Failed to post the ticket panel.', ephemeral: true });
+            await message.reply('❌ Failed to post the ticket panel.');
         }
     },
 
-    async setup(client) {
-        client.on('interactionCreate', async interaction => {
-            if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_category') {
-                const categoryId = '1380177235499286638'; // Replace with config
-                const modRoleId = '1379809709871071352'; // Replace with config
-                const user = interaction.user;
-                const selected = interaction.values[0];
+    // ⭐ New handler for select menu interactions specific to this command ⭐
+    async handleSelectMenuInteraction(interaction) {
+        if (interaction.customId === 'ticket_category') {
+            const categoryId = '1380177235499286638'; // Replace with config
+            const modRoleId = '1379809709871071352'; // Replace with config
+            const user = interaction.user;
+            const selected = interaction.values[0];
 
-                if (!['general', 'partnership', 'management', 'ingame', 'media'].includes(selected)) {
-                    await interaction.reply({ content: '❌ Invalid category selected.', ephemeral: true });
-                    return;
-                }
-
-                // Sanitize username for channel name
-                const sanitizedUsername = user.username
-                    .toLowerCase()
-                    .replace(/[^a-z0-9-]/g, '-')
-                    .replace(/-+/g, '-') // Remove consecutive hyphens
-                    .slice(0, 80); // Ensure within Discord's limit
-                const ticketName = `ticket-${selected}-${sanitizedUsername}`.slice(0, 100);
-
-                try {
-                    const channel = await interaction.guild.channels.create({
-                        name: ticketName,
-                        type: ChannelType.GuildText,
-                        parent: categoryId,
-                        topic: `Ticket opened by ${user.id}`, // Store ticket opener's ID
-                        permissionOverwrites: [
-                            { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                            { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                            { id: modRoleId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                        ],
-                    });
-
-                    await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
-
-                    let messageContent;
-                    switch (selected) {
-                        case 'general':
-                            messageContent = `Hello <@${user.id}>👋, thank you for opening a general ticket. Please explain your issue or request below.`;
-                            break;
-                        case 'partnership':
-                            messageContent = `Hello <@${user.id}>👋, thank you for opening a partnership ticket! A HR member will be with you shortly. Please fill out this format:\nServer Name:\nServer Owner:\nMembers without bots:\nServer link: (not ad)`;
-                            break;
-                        case 'management':
-                            messageContent = `Hello <@${user.id}>👋, thank you for opening a management support ticket. Please send the user of the staff member you are reporting and your form of proof.`;
-                            break;
-                        case 'ingame':
-                            messageContent = `Hello <@${user.id}>👋, thank you for opening an in-game support ticket. Make sure to upload clips with Medal, Streamable, or Youtube links. Not doing so will result in your report being denied by staff members.`;
-                            break;
-                        case 'media':
-                            messageContent = `Roblox username:\n\nAge:\n\nWhy do you want to apply?\n\nHow active will you be if you’re accepted?\n\nPlease show your previous work below. (ERLC Roleplay scenes, atleast 2-5 pictures.)`;
-                            break;
-                        default:
-                            messageContent = `Hello <@${user.id}>, your ticket has been opened.`;
-                    }
-
-                    const embed = new EmbedBuilder()
-                        .setColor('#B22222')
-                        .setTitle('Atlanta Roleplay Ticket')
-                        .setDescription(messageContent)
-                        .setTimestamp();
-
-                    const claimButton = new ButtonBuilder()
-                        .setCustomId('claim_ticket')
-                        .setLabel('Claim Ticket')
-                        .setStyle(ButtonStyle.Success);
-
-                    const closeButton = new ButtonBuilder()
-                        .setCustomId('close_ticket')
-                        .setLabel('Close Ticket')
-                        .setStyle(ButtonStyle.Danger);
-
-                    const buttons = new ActionRowBuilder().addComponents(claimButton, closeButton);
-
-                    await channel.send({ embeds: [embed], components: [buttons] });
-                } catch (error) {
-                    console.error('Error creating ticket channel:', error);
-                    await interaction.reply({ content: '❌ Failed to create your ticket. Please contact staff.', ephemeral: true });
-                }
+            if (!['general', 'partnership', 'management', 'ingame', 'media'].includes(selected)) {
+                await interaction.reply({ content: '❌ Invalid category selected.', ephemeral: true });
+                return;
             }
 
-            if (interaction.isButton()) {
-                const channel = interaction.channel;
+            // Sanitize username for channel name
+            const sanitizedUsername = user.username
+                .toLowerCase()
+                .replace(/[^a-z0-9-]/g, '-')
+                .replace(/-+/g, '-') // Remove consecutive hyphens
+                .slice(0, 80); // Ensure within Discord's limit
+            const ticketName = `ticket-${selected}-${sanitizedUsername}`.slice(0, 100);
 
-                if (interaction.customId === 'claim_ticket') {
-                    try {
-                        await channel.send({ content: `✅ Ticket claimed by <@${interaction.user.id}>.` });
-                        await interaction.deferUpdate(); // Acknowledge the interaction, do not edit or reply
-                    } catch (error) {
-                        console.error('Error claiming ticket:', error);
-                        await interaction.reply({ content: '❌ Failed to claim the ticket.', ephemeral: true });
-                    }
-                } else if (interaction.customId === 'close_ticket') {
-                    try {
-                        const messages = await channel.messages.fetch({ limit: 100 });
-                        const transcript = messages
-                            .reverse()
-                            .map(m => `[${moment(m.createdAt).format('M/D/YYYY, h:mm:ss A')}] ${m.author.tag}: ${m.content}`)
-                            .join('\n')
-                            .slice(0, 4000) || 'No messages recorded.';
+            try {
+                const channel = await interaction.guild.channels.create({
+                    name: ticketName,
+                    type: ChannelType.GuildText,
+                    parent: categoryId,
+                    topic: `Ticket opened by ${user.id}`, // Store ticket opener's ID
+                    permissionOverwrites: [
+                        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                        { id: modRoleId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                    ],
+                });
 
-                        const transcriptEmbed = new EmbedBuilder()
-                            .setTitle(`Transcript - ${channel.name}`)
-                            .setColor('#B22222')
-                            .setDescription(transcript)
-                            .setTimestamp();
+                await interaction.reply({ content: `✅ Your ticket has been created: ${channel}`, ephemeral: true });
 
-                        const logChannel = interaction.guild.channels.cache.get('1391251472515207219');
-                        if (logChannel) await logChannel.send({ embeds: [transcriptEmbed] });
-
-                        // Send transcript to ticket opener using channel topic
-                        const ticketOwnerId = channel.topic?.match(/\d+/)?.[0];
-                        if (ticketOwnerId) {
-                            const starterUser = await interaction.guild.members.fetch(ticketOwnerId).catch(() => null);
-                            if (starterUser) {
-                                await starterUser.send({ embeds: [transcriptEmbed] }).catch(err => {
-                                    console.error(`Failed to send transcript to ${ticketOwnerId}:`, err);
-                                });
-                            }
-                        }
-
-                        await interaction.update({ content: 'Ticket closed and transcript sent.', embeds: [], components: [] });
-                        setTimeout(() => channel.delete().catch(err => console.error('Error deleting ticket channel:', err)), 5000);
-                    } catch (error) {
-                        console.error('Error closing ticket:', error);
-                        await interaction.reply({ content: '❌ Failed to close the ticket.', ephemeral: true });
-                    }
+                let messageContent;
+                switch (selected) {
+                    case 'general':
+                        messageContent = `Hello <@${user.id}>👋, thank you for opening a general ticket. Please explain your issue or request below.`;
+                        break;
+                    case 'partnership':
+                        messageContent = `Hello <@${user.id}>👋, thank you for opening a partnership ticket! A HR member will be with you shortly. Please fill out this format:\nServer Name:\nServer Owner:\nMembers without bots:\nServer link: (not ad)`;
+                        break;
+                    case 'management':
+                        messageContent = `Hello <@${user.id}>👋, thank you for opening a management support ticket. Please send the user of the staff member you are reporting and your form of proof.`;
+                        break;
+                    case 'ingame':
+                        messageContent = `Hello <@${user.id}>👋, thank you for opening an in-game support ticket. Make sure to upload clips with Medal, Streamable, or Youtube links. Not doing so will result in your report being denied by staff members.`;
+                        break;
+                    case 'media':
+                        messageContent = `Roblox username:\n\nAge:\n\nWhy do you want to apply?\n\nHow active will you be if you’re accepted?\n\nPlease show your previous work below. (ERLC Roleplay scenes, atleast 2-5 pictures.)`;
+                        break;
+                    default:
+                        messageContent = `Hello <@${user.id}>, your ticket has been opened.`;
                 }
+
+                const embed = new EmbedBuilder()
+                    .setColor('#B22222')
+                    .setTitle('Atlanta Roleplay Ticket')
+                    .setDescription(messageContent)
+                    .setTimestamp();
+
+                const claimButton = new ButtonBuilder()
+                    .setCustomId('claim_ticket')
+                    .setLabel('Claim Ticket')
+                    .setStyle(ButtonStyle.Success);
+
+                const closeButton = new ButtonBuilder()
+                    .setCustomId('close_ticket')
+                    .setLabel('Close Ticket')
+                    .setStyle(ButtonStyle.Danger);
+
+                const buttons = new ActionRowBuilder().addComponents(claimButton, closeButton);
+
+                await channel.send({ embeds: [embed], components: [buttons] });
+            } catch (error) {
+                console.error('Error creating ticket channel:', error);
+                await interaction.reply({ content: '❌ Failed to create your ticket. Please contact staff.', ephemeral: true });
             }
-        });
+        }
     },
+
+    // ⭐ New handler for button interactions specific to this command ⭐
+    async handleButtonInteraction(interaction) {
+        const channel = interaction.channel;
+
+        if (interaction.customId === 'claim_ticket') {
+            try {
+                await channel.send({ content: `✅ Ticket claimed by <@${interaction.user.id}>.` });
+                await interaction.deferUpdate(); // Acknowledge the interaction, do not edit or reply
+            } catch (error) {
+                console.error('Error claiming ticket:', error);
+                await interaction.reply({ content: '❌ Failed to claim the ticket.', ephemeral: true });
+            }
+        } else if (interaction.customId === 'close_ticket') {
+            try {
+                const messages = await channel.messages.fetch({ limit: 100 });
+                const transcript = messages
+                    .reverse()
+                    .map(m => `[${moment(m.createdAt).format('M/D/YYYY, h:mm:ss A')}] ${m.author.tag}: ${m.content}`)
+                    .join('\n')
+                    .slice(0, 4000) || 'No messages recorded.';
+
+                const transcriptEmbed = new EmbedBuilder()
+                    .setTitle(`Transcript - ${channel.name}`)
+                    .setColor('#B22222')
+                    .setDescription(transcript)
+                    .setTimestamp();
+
+                const logChannel = interaction.guild.channels.cache.get('1391251472515207219');
+                if (logChannel) await logChannel.send({ embeds: [transcriptEmbed] });
+
+                // Send transcript to ticket opener using channel topic
+                const ticketOwnerId = channel.topic?.match(/\d+/)?.[0];
+                if (ticketOwnerId) {
+                    const starterUser = await interaction.guild.members.fetch(ticketOwnerId).catch(() => null);
+                    if (starterUser) {
+                        await starterUser.send({ embeds: [transcriptEmbed] }).catch(err => {
+                            console.error(`Failed to send transcript to ${ticketOwnerId}:`, err);
+                        });
+                    }
+                }
+
+                await interaction.update({ content: 'Ticket closed and transcript sent.', embeds: [], components: [] });
+                setTimeout(() => channel.delete().catch(err => console.error('Error deleting ticket channel:', err)), 5000);
+            } catch (error) {
+                console.error('Error closing ticket:', error);
+                await interaction.reply({ content: '❌ Failed to close the ticket.', ephemeral: true });
+            }
+        }
+    }
 };
+
 
 
 

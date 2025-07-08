@@ -183,8 +183,7 @@ client.on('messageCreate', async (message) => {
         await command.execute(message, args); // Execute the command
     } catch (error) {
         console.error(`Error executing prefix command ${commandName}:`, error); // Log any errors during command execution
-        // Use flags for ephemeral response
-        message.reply({ content: 'There was an error executing that command.', flags: 64 }).catch(err => console.error('Failed to reply to message:', err));
+        message.reply('There was an error executing that command.');
     }
 });
 
@@ -362,6 +361,11 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
+
+
+
+
+
 
 
 
