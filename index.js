@@ -45,7 +45,7 @@ if (process.env.DISCORD_BOT_TOKEN) {
 
 // ⭐⭐⭐ FIREBASE INITIALIZATION START ⭐⭐⭐
 let firebaseConfig = {};
-let appId = 'default-app-id'; // Default value
+let appId = 'default-app-id'; // Default value for appId
 
 if (process.env.FIREBASE_CONFIG) {
     try {
@@ -127,7 +127,7 @@ if (!fs.existsSync(commandsPath)) {
 
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
+    const filePath = path.join(commandsPath, file); // Corrected 'commands' to 'commandsPath'
     const command = require(filePath);
 
     // Load as prefix command if it has 'name' and 'execute' and is NOT a slash command
@@ -304,7 +304,7 @@ client.on('guildMemberAdd', async member => {
 
         const memberCount = member.guild.memberCount;
         const waveEmoji = '<a:wave_animated:1391882992955297962>'; // Corrected animated wave emoji ID
-        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! You are our \`${memberCount}\` member!**`; // Corrected welcome message
+        const welcomeMessage = `> ${waveEmoji} **Welcome ${member.toString()} to Atlanta Roleplay! You are our \`${memberCount}\` member!**`;
 
         await welcomeChannel.send(welcomeMessage);
         console.log(`[WELCOME MESSAGE SUCCESS] Sent welcome message for ${member.user.tag} to channel "${welcomeChannel.name}".`);
@@ -358,6 +358,8 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN); // Ensure DISCORD_BOT_TOKEN is set in your .env file
+
+
 
 
 
